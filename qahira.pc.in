@@ -1,0 +1,12 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@/qahira-@qahira_series@
+
+Name: Qahira
+Description: Load images as Cairo image surfaces.
+Version: @VERSION@
+Requires: @qahira_cairo_version@ @qahira_gio_version@
+Requires.private: @qahira_gio_unix_version@
+Libs: -L${libdir} -lqahira-@qahira_series@
+CFlags: -I${includedir}
