@@ -22,7 +22,9 @@
 #include <gio/gio.h>
 #include <glib-object.h>
 #include <qahira/error.h>
+#include <qahira/loader/factory.h>
 #include <qahira/loader.h>
+#include <qahira/surface/factory.h>
 #include <qahira/types.h>
 #include <stdio.h>
 
@@ -91,7 +93,7 @@ void
 qahira_set_stream(Qahira *self, GInputStream *stream);
 
 void
-qahira_set_cancellable(Qahira *self, GCancellable *cancellable);
+qahira_set_cancellable(Qahira *self, GCancellable *cancel);
 
 GCancellable *
 qahira_get_cancellable(Qahira *self);

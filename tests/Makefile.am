@@ -13,11 +13,13 @@ LIBS = \
 # add unit tests
 check_PROGRAMS = \
 	qahira-test \
+	loader-test \
 	loader-factory-test \
 	surface-factory-test
 TESTS = $(check_PROGRAMS)
 # add source files
 qahira_test_SOURCES = qahira-test.c
+loader_test_SOURCES = loader-test.c
 loader_factory_test_SOURCES = loader-factory-test.c
 surface_factory_test_SOURCES = surface-factory-test.c
 # generate XML report

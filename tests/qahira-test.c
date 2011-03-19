@@ -20,12 +20,22 @@
 #endif
 #include <glib.h>
 #include "qahira/qahira.h"
-#include <stdlib.h>
 
-#define NAME "Qahira Example"
+#define CLASS "/qahira"
+
+static void
+test(gpointer *fixture, gconstpointer data)
+{
+	Qahira *qr = qahira_new();
+	g_assert(qr);
+	g_object_unref(qr);
+}
 
 int
 main(int argc, char *argv[])
 {
-	return EXIT_SUCCESS;
+	g_test_init(&argc, &argv, NULL);
+	g_type_init();
+	g_test_add(CLASS, gpointer, NULL, NULL, test, NULL);
+	return g_test_run();
 }
