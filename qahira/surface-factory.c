@@ -35,11 +35,11 @@ qahira_surface_factory_class_init(QahiraSurfaceFactoryClass *klass)
 
 cairo_surface_t *
 qahira_surface_factory_create(QahiraSurfaceFactory *self,
-		cairo_content_t content, gint width, gint height)
+		cairo_format_t format, gint width, gint height)
 {
 	g_return_val_if_fail(QAHIRA_IS_SURFACE_FACTORY(self), NULL);
 	return QAHIRA_SURFACE_FACTORY_GET_CLASS(self)->
-		create(self, content, width, height);
+		create(self, format, width, height);
 }
 
 guchar *
@@ -106,7 +106,7 @@ qahira_surface_factory_get_stride(QahiraSurfaceFactory *self,
 }
 
 cairo_format_t
-qahira_surface_factory_get_content(QahiraSurfaceFactory *self,
+qahira_surface_factory_get_format(QahiraSurfaceFactory *self,
 		cairo_surface_t *surface)
 {
 	g_return_val_if_fail(QAHIRA_IS_SURFACE_FACTORY(self),

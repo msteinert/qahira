@@ -60,6 +60,7 @@ qahira_init(Qahira *self)
 	self->priv = ASSIGN_PRIVATE(self);
 	struct Private *priv = GET_PRIVATE(self);
 	priv->loaders = g_ptr_array_new_with_free_func(destroy);
+	priv->loader_factory = qahira_loader_factory_new();
 	priv->surface_factory = qahira_image_surface_factory_new();
 }
 
@@ -132,7 +133,6 @@ reset(Qahira *self)
 	}
 }
 
-G_GNUC_WARN_UNUSED_RESULT
 cairo_surface_t *
 qahira_surface_create(Qahira *self, GError **error)
 {
@@ -152,7 +152,7 @@ qahira_surface_create(Qahira *self, GError **error)
 	}
 	if (0 == size) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_EMPTY_FILE,
-				Q_("file is empty"));
+				Q_("stream is empty"));
 		goto exit;
 	}
 	type = g_content_type_guess(priv->filename, priv->buffer, size, NULL);
@@ -344,6 +344,15 @@ qahira_get_loader(Qahira *self, const gchar *type)
 		if (qahira_loader_supports_intern_string(loader, string)) {
 			return loader;
 		}
+	}
+	if (G_UNLIKELY(!priv->loader_factory)) {
+		return NULL;
+	}
+	QahiraLoader *loader =
+		qahira_loader_factory_create(priv->loader_factory, type);
+	if (loader) {
+		g_ptr_array_add(priv->loaders, loader);
+		return loader;
 	}
 	return NULL;
 }

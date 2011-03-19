@@ -27,7 +27,7 @@ libqahira_@qahira_series_major@_@qahira_series_minor@_la_LDFLAGS = \
 	$(GIO_LIBS) \
 	$(GIO_UNIX_LIBS) \
 	$(CAIRO_LIBS)
-libqahira_@qahira_series_major@_@qahira_series_minor@_la_LIBS = \
+libqahira_@qahira_series_major@_@qahira_series_minor@_la_LIBADD = \
 	surface/factory/libqahira-surface-factory.la
 # install development headers
 pkgincludedir = $(includedir)/qahira-$(qahira_series)/qahira

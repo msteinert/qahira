@@ -55,7 +55,7 @@ struct QahiraSurfaceFactory_ {
 
 typedef cairo_surface_t *
 (*QahiraSurfaceFactoryCreate)(QahiraSurfaceFactory *self,
-		cairo_content_t content, gint width, gint height);
+		cairo_format_t format, gint width, gint height);
 
 typedef guchar *
 (*QahiraSurfaceFactoryGetData)(QahiraSurfaceFactory *self,
@@ -96,7 +96,7 @@ qahira_surface_factory_get_type(void) G_GNUC_CONST;
  */
 cairo_surface_t *
 qahira_surface_factory_create(QahiraSurfaceFactory *self,
-		cairo_content_t content, gint width, gint height);
+		cairo_format_t format, gint width, gint height);
 
 /**
  * \brief Get a pointer to surface pixel data.
@@ -119,6 +119,22 @@ qahira_surface_factory_get_data(QahiraSurfaceFactory *self,
  */
 cairo_surface_type_t
 qahira_surface_factory_type(QahiraSurfaceFactory *self);
+
+gint
+qahira_surface_factory_get_width(QahiraSurfaceFactory *self,
+		cairo_surface_t *surface);
+
+gint
+qahira_surface_factory_get_height(QahiraSurfaceFactory *self,
+		cairo_surface_t *surface);
+
+gint
+qahira_surface_factory_get_stride(QahiraSurfaceFactory *self,
+		cairo_surface_t *surface);
+
+cairo_format_t
+qahira_surface_factory_get_format(QahiraSurfaceFactory *self,
+		cairo_surface_t *surface);
 
 G_END_DECLS
 

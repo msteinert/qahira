@@ -67,8 +67,7 @@ qahira_loader_factory_new(void);
 
 G_GNUC_WARN_UNUSED_RESULT
 QahiraLoader *
-qahira_loader_factory_create_loader(QahiraLoaderFactory *self,
-		const gchar *type);
+qahira_loader_factory_create(QahiraLoaderFactory *self, const gchar *type);
 
 G_END_DECLS
 

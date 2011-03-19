@@ -55,7 +55,7 @@ struct QahiraImageSurfaceFactory_ {
 
 struct QahiraImageSurfaceFactoryClass_ {
 	/*< private >*/
-	QahiraImageSurfaceFactory parent_class;
+	QahiraSurfaceFactoryClass parent_class;
 };
 
 G_GNUC_NO_INSTRUMENT

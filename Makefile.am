@@ -1,7 +1,7 @@
 #                                        -*- Automake -*-
 # Process this file with automake to produce Makefile.in.
 
-SUBDIRS = qahira
+SUBDIRS = qahira tests
 ACLOCAL_AMFLAGS = -I m4
 # install pkg-config script
 qahira-$(qahira_series).pc: qahira.pc

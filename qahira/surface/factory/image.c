@@ -29,10 +29,10 @@ qahira_image_surface_factory_init(QahiraImageSurfaceFactory *self)
 }
 
 static cairo_surface_t *
-create(QahiraSurfaceFactory *self, cairo_content_t content,
+create(QahiraSurfaceFactory *self, cairo_format_t format,
 		gint width, gint height)
 {
-	return cairo_image_surface_create(content, width, height);
+	return cairo_image_surface_create(format, width, height);
 }
 
 static guchar *

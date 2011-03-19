@@ -22,7 +22,7 @@
 #include "qahira/macros.h"
 #include "qahira/surface/factory.h"
 
-G_DEFINE_TYPE(QahiraLoader, qahira_loader, G_TYPE_OBJECT)
+G_DEFINE_ABSTRACT_TYPE(QahiraLoader, qahira_loader, G_TYPE_OBJECT)
 
 #define ASSIGN_PRIVATE(instance) \
 	(G_TYPE_INSTANCE_GET_PRIVATE(instance, QAHIRA_TYPE_LOADER, \
@@ -102,6 +102,13 @@ qahira_loader_set_surface_factory(QahiraLoader *self,
 		g_object_unref(priv->factory);
 	}
 	priv->factory = g_object_ref(factory);
+}
+
+QahiraSurfaceFactory *
+qahira_loader_get_surface_factory(QahiraLoader *self)
+{
+	g_return_val_if_fail(QAHIRA_IS_LOADER(self), NULL);
+	return GET_PRIVATE(self)->factory;
 }
 
 cairo_surface_t *

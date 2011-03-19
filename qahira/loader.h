@@ -90,6 +90,9 @@ void
 qahira_loader_set_surface_factory(QahiraLoader *self,
 		QahiraSurfaceFactory *factory);
 
+QahiraSurfaceFactory *
+qahira_loader_get_surface_factory(QahiraLoader *self);
+
 cairo_surface_t *
 qahira_loader_load(QahiraLoader *self,  GInputStream *stream,
 		GCancellable *cancel, GError **error);
