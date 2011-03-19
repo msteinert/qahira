@@ -35,15 +35,14 @@ qahira_surface_factory_class_init(QahiraSurfaceFactoryClass *klass)
 
 cairo_surface_t *
 qahira_surface_factory_create(QahiraSurfaceFactory *self,
-		cairo_content_t content, gint width, gint height,
-		gint stride)
+		cairo_content_t content, gint width, gint height)
 {
 	g_return_val_if_fail(QAHIRA_IS_SURFACE_FACTORY(self), NULL);
 	return QAHIRA_SURFACE_FACTORY_GET_CLASS(self)->
-		create(self, content, width, height, stride);
+		create(self, content, width, height);
 }
 
-guint *
+guchar *
 qahira_surface_factory_get_data(QahiraSurfaceFactory *self,
 		cairo_surface_t *surface)
 {
@@ -62,4 +61,61 @@ qahira_surface_factory_type(QahiraSurfaceFactory *self)
 {
 	g_return_val_if_fail(QAHIRA_IS_SURFACE_FACTORY(self), -1);
 	return QAHIRA_SURFACE_FACTORY_GET_CLASS(self)->type(self);
+}
+
+gint
+qahira_surface_factory_get_width(QahiraSurfaceFactory *self,
+		cairo_surface_t *surface)
+{
+	g_return_val_if_fail(QAHIRA_IS_SURFACE_FACTORY(self), 0);
+	g_return_val_if_fail(surface, 0);
+	if (qahira_surface_factory_type(self)
+			!= cairo_surface_get_type(surface)) {
+		return 0;
+	}
+	return QAHIRA_SURFACE_FACTORY_GET_CLASS(self)->
+		get_width(self, surface);
+}
+
+gint
+qahira_surface_factory_get_height(QahiraSurfaceFactory *self,
+		cairo_surface_t *surface)
+{
+	g_return_val_if_fail(QAHIRA_IS_SURFACE_FACTORY(self), 0);
+	g_return_val_if_fail(surface, 0);
+	if (qahira_surface_factory_type(self)
+			!= cairo_surface_get_type(surface)) {
+		return 0;
+	}
+	return QAHIRA_SURFACE_FACTORY_GET_CLASS(self)->
+		get_height(self, surface);
+}
+
+gint
+qahira_surface_factory_get_stride(QahiraSurfaceFactory *self,
+		cairo_surface_t *surface)
+{
+	g_return_val_if_fail(QAHIRA_IS_SURFACE_FACTORY(self), 0);
+	g_return_val_if_fail(surface, 0);
+	if (qahira_surface_factory_type(self)
+			!= cairo_surface_get_type(surface)) {
+		return 0;
+	}
+	return QAHIRA_SURFACE_FACTORY_GET_CLASS(self)->
+		get_stride(self, surface);
+}
+
+cairo_format_t
+qahira_surface_factory_get_content(QahiraSurfaceFactory *self,
+		cairo_surface_t *surface)
+{
+	g_return_val_if_fail(QAHIRA_IS_SURFACE_FACTORY(self),
+			CAIRO_FORMAT_INVALID);
+	g_return_val_if_fail(surface, CAIRO_FORMAT_INVALID);
+	if (qahira_surface_factory_type(self)
+			!= cairo_surface_get_type(surface)) {
+		return CAIRO_FORMAT_INVALID;
+	}
+	return QAHIRA_SURFACE_FACTORY_GET_CLASS(self)->
+		get_format(self, surface);
 }

@@ -23,6 +23,7 @@
 #include "qahira/loader/private.h"
 #include "qahira/macros.h"
 #include "qahira/qahira.h"
+#include "qahira/surface/factory/image.h"
 #include "qahira/surface/factory.h"
 
 G_DEFINE_TYPE(Qahira, qahira, G_TYPE_OBJECT)
@@ -59,6 +60,7 @@ qahira_init(Qahira *self)
 	self->priv = ASSIGN_PRIVATE(self);
 	struct Private *priv = GET_PRIVATE(self);
 	priv->loaders = g_ptr_array_new_with_free_func(destroy);
+	priv->surface_factory = qahira_image_surface_factory_new();
 }
 
 static void

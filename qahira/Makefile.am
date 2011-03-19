@@ -1,6 +1,7 @@
 #                                        -*- Automake -*-
 # Process this file with automake to produce Makefile.in.
 
+SUBDIRS = surface/factory
 # library definition
 lib_LTLIBRARIES = libqahira-@qahira_series_major@.@qahira_series_minor@.la
 libqahira_@qahira_series_major@_@qahira_series_minor@_la_SOURCES = \
@@ -26,6 +27,8 @@ libqahira_@qahira_series_major@_@qahira_series_minor@_la_LDFLAGS = \
 	$(GIO_LIBS) \
 	$(GIO_UNIX_LIBS) \
 	$(CAIRO_LIBS)
+libqahira_@qahira_series_major@_@qahira_series_minor@_la_LIBS = \
+	surface/factory/libqahira-surface-factory.la
 # install development headers
 pkgincludedir = $(includedir)/qahira-$(qahira_series)/qahira
 pkginclude_HEADERS = \

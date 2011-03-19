@@ -123,6 +123,7 @@ AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([
 	qahira.pc
 	qahira/Makefile
+	qahira/surface/factory/Makefile
 	tests/Makefile
 	Makefile
 ])
