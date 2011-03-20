@@ -1,0 +1,9 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@/qahira-@qahira_series@
+
+Name: Qahira JPEG Loader
+Description: Load JPEG images as Cairo surfaces.
+Version: @VERSION@
+Requires: qahira = @VERSION@

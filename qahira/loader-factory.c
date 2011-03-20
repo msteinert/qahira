@@ -18,7 +18,17 @@
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
+#include <gio/gio.h>
 #include "qahira/loader/factory.h"
+#if QAHIRA_HAS_JPEG
+#include "qahira/loader/jpeg.h"
+#endif // QAHIRA_HAS_JPEG
+#if QAHIRA_HAS_PNG
+#include "qahira/loader/png.h"
+#endif // QAHIRA_HAS_PNG
+#if QAHIRA_HAS_TARGA
+#include "qahira/loader/targa.h"
+#endif // QAHIRA_HAS_TARGA
 
 G_DEFINE_TYPE(QahiraLoaderFactory, qahira_loader_factory, G_TYPE_OBJECT)
 

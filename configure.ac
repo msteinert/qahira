@@ -49,7 +49,7 @@ AC_SUBST([LT_CURRENT])
 AC_SUBST([LT_REVISION])
 AC_SUBST([LT_AGE])
 # Checks for dependencies
-qahira_glib_minimum_version=2.12 # should be 2.24
+qahira_glib_minimum_version=2.18 # should be 2.24
 qahira_glib_version="glib-2.0 >= $qahira_glib_minimum_version"
 AC_SUBST([qahira_glib_version])
 PKG_CHECK_MODULES([GLIB], [$qahira_glib_version])
@@ -65,6 +65,56 @@ PKG_CHECK_MODULES([GIO_UNIX], [$qahira_gio_unix_version])
 qahira_cairo_version="cairo >= 1.10"
 AC_SUBST([qahira_cairo_version])
 PKG_CHECK_MODULES([CAIRO], [$qahira_cairo_version])
+# Configure image loaders
+QAHIRA_PKG_CONFIG_LOADERS=
+# JPEG image loader
+AC_ARG_ENABLE([jpeg],
+	[AC_HELP_STRING([--disable-jpeg],
+		[disable the JPEG image loader @<:@default=auto@:>@])],,
+	[enableval=auto])
+AC_CACHE_CHECK([for JPEG support], [qahira_cv_enable_jpeg],
+	[qahira_cv_enable_jpeg=$enableval])
+AS_IF([test "x$qahira_cv_enable_jpeg" != "xno"],
+	[AC_CHECK_HEADER([jpeglib.h],
+		[AC_SEARCH_LIBS([jpeg_start_decompress], [jpeg],
+			[qahira_has_jpeg=yes
+			QAHIRA_PKG_CONFIG_LOADERS+=qahira/loader/qahira-jpeg.pc
+			AC_DEFINE([QAHIRA_HAS_JPEG], [1],
+				[Define to 1 if the JPEG loader is enabled.])],
+			[qahira_has_jpeg=no])],
+		[qahira_has_jpeg=no])],
+	[qahira_has_jpeg=no])
+AM_CONDITIONAL([QAHIRA_HAS_JPEG], [test "x$qahira_has_jpeg" = "xyes"])
+# PNG image loader
+AC_ARG_ENABLE([png],
+	[AC_HELP_STRING([--disable-png],
+		[disable the PNG image loader @<:@default=no@:>@])],,
+	[enableval=no])
+AC_CACHE_CHECK([for PNG support], [qahira_cv_enable_png],
+	[qahira_cv_enable_png=$enableval])
+AS_IF([test "x$qahira_cv_enable_png" != "xno"],
+	[PKG_CHECK_MODULES([PNG], [libpng],
+		[QAHIRA_PKG_CONFIG_LOADERS+=qahira/loader/qahira-png.pc
+		AC_DEFINE([QAHIRA_HAS_PNG], [1],
+			[Define to 1 if the PNG loader is enabled.])
+		qahira_has_png=yes],
+		[qahira_has_png=no])],
+	[qahira_has_png=no])
+AM_CONDITIONAL([QAHIRA_HAS_PNG], [test "x$qahira_has_png" = "xyes"])
+# Truevision Targa image loader
+AC_ARG_ENABLE([targa],
+	[AC_HELP_STRING([--disable-targa],
+		[disable the TARGA image loader @<:@default=no@:>@])],,
+	[enableval=no])
+AC_CACHE_CHECK([for TARGA support], [qahira_cv_enable_targa],
+	[qahira_cv_enable_targa=$enableval])
+AS_IF([test "x$qahira_cv_enable_png" = "xyes"],
+		[QAHIRA_PKG_CONFIG_LOADERS+=qahira/loader/qahira-targa.pc
+		AC_DEFINE([QAHIRA_HAS_TARGA], [1],
+			[Define to 1 if the TARGA loader is enabled.])
+		qahira_has_targa=yes],
+		[qahira_has_targa=no])
+AM_CONDITIONAL([QAHIRA_HAS_TARGA], [test "x$qahira_has_targa" = "xyes"])
 # Debug option
 AC_ARG_ENABLE([debug],
 	[AC_HELP_STRING([--enable-debug],
@@ -79,11 +129,11 @@ AC_ARG_ENABLE([trace],
 		[enable runtime tracing features @<:@default=no@:>@])],
 	[AS_IF([test "x$qahira_debug" = "xno"],
 		[AC_MSG_ERROR([Debugging must be enabled to enable tracing.])])
-	AC_CHECK_LIB([bfd], [bfd_openr],
+	AC_SEARCH_LIBS([bfd_openr], [bfd],
 		[AC_MSG_WARN([Linking with libbfd makes this library subject to the terms of the GPL!])
 		AC_DEFINE([HAVE_BFD], [1],
 			[Define to 1 if libbfd is available.])])
-	AC_CHECK_LIB([dl], [dladdr],
+	AC_SEARCH_LIBS([dladdr], [dl],
 		[AC_DEFINE([_GNU_SOURCE], [1],
 			[Define to 1 to enable GNU extensions.])
 		AC_DEFINE([HAVE_DLADDR], [1],
@@ -122,6 +172,8 @@ AH_BOTTOM(
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([
 	qahira.pc
+	$QAHIRA_PKG_CONFIG_LOADERS
+	qahira/loader/Makefile
 	qahira/Makefile
 	qahira/surface/factory/Makefile
 	tests/Makefile
@@ -132,6 +184,10 @@ AC_MSG_RESULT([
 $PACKAGE_NAME build options:
 	Host: $host
 	Version: $VERSION
+	Image Loaders:
+		JPEG: $qahira_has_jpeg
+		PNG: $qahira_has_png
+		TARGA: $qahira_has_targa
 	Native Language Support: $qahira_nls
 	Debugging: $qahira_debug
 	Tracing: $qahira_trace

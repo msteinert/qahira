@@ -26,7 +26,7 @@
 #if QAHIRA_HAS_JPEG
 #include "qahira/loader/jpeg.h"
 static void
-test_jpeg(QahiraLoaderFactory **factory, gconstpointer data)
+test_jpeg(gpointer *fixture, gconstpointer data)
 {
 	QahiraLoader *jpeg = qahira_loader_jpeg_new();
 	g_assert(jpeg);
@@ -37,7 +37,7 @@ test_jpeg(QahiraLoaderFactory **factory, gconstpointer data)
 #if QAHIRA_HAS_PNG
 #include "qahira/loader/png.h"
 static void
-test_png(QahiraLoaderFactory **factory, gconstpointer data)
+test_png(gpointer *fixture, gconstpointer data)
 {
 	QahiraLoader *png = qahira_loader_png_new();
 	g_assert(png);
@@ -48,7 +48,7 @@ test_png(QahiraLoaderFactory **factory, gconstpointer data)
 #if QAHIRA_HAS_TARGA
 #include "qahira/loader/targa.h"
 static void
-test_targa(QahiraLoaderFactory **factory, gconstpointer data)
+test_targa(gpointer *fixture, gconstpointer data)
 {
 	QahiraLoader *targa = qahira_loader_targa_new();
 	g_assert(targa);

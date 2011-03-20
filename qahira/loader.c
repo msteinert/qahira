@@ -64,7 +64,7 @@ finalize(GObject *base)
 	G_OBJECT_CLASS(qahira_loader_parent_class)->finalize(base);
 }
 
-gboolean
+static gboolean
 load_start(QahiraLoader *self, GError **error)
 {
 	g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_UNSUPPORTED,
@@ -72,7 +72,7 @@ load_start(QahiraLoader *self, GError **error)
 	return FALSE;
 }
 
-gboolean
+static gboolean
 save_start(QahiraLoader *self, GError **error)
 {
 	g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_UNSUPPORTED,
