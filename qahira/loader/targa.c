@@ -23,7 +23,7 @@
 G_DEFINE_TYPE(QahiraLoaderTarga, qahira_loader_targa, QAHIRA_TYPE_LOADER)
 
 #define ASSIGN_PRIVATE(instance) \
-	(G_TYPE_INSTANCE_GET_PRIVATE(instance, QAHIRA_TYPE_LOADER, \
+	(G_TYPE_INSTANCE_GET_PRIVATE(instance, QAHIRA_TYPE_LOADER_TARGA, \
 		struct Private))
 
 #define GET_PRIVATE(instance) \

@@ -101,7 +101,7 @@ AS_IF([test "x$qahira_cv_enable_png" != "xno"],
 		[qahira_has_png=no])],
 	[qahira_has_png=no])
 AM_CONDITIONAL([QAHIRA_HAS_PNG], [test "x$qahira_has_png" = "xyes"])
-# Truevision Targa image loader
+# TARGA image loader
 AC_ARG_ENABLE([targa],
 	[AC_HELP_STRING([--disable-targa],
 		[disable the TARGA image loader @<:@default=no@:>@])],,
