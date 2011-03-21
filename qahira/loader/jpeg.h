@@ -18,7 +18,7 @@
 #ifndef QAHIRA_LOADER_JPEG_H
 #define QAHIRA_LOADER_JPEG_H
 
-#include <qahira/loader.h>
+#include <qahira/loader/private.h>
 
 G_BEGIN_DECLS
 

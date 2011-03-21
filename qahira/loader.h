@@ -66,7 +66,7 @@ typedef gboolean
 		GOutputStream *stream, GCancellable *cancel, GError **error);
 
 typedef cairo_surface_t *
-(*QahiraLoaderLoadFinish)(QahiraLoader *self);
+(*QahiraLoaderLoadFinish)(QahiraLoader *self, GError **error);
 
 typedef void
 (*QahiraLoaderSaveFinish)(QahiraLoader *self);

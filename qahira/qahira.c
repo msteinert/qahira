@@ -44,7 +44,6 @@ struct Private {
 	gchar *filename;
 	gboolean owner;
 	guchar buffer[4096];
-	gsize size;
 };
 
 static void
@@ -180,7 +179,7 @@ qahira_surface_create(Qahira *self, GError **error)
 					sizeof(priv->buffer), priv->cancel,
 					error);
 			if (-1 == size) {
-				goto error;
+				return NULL;
 			}
 			if (0 == size) {
 				break;
@@ -191,20 +190,13 @@ qahira_surface_create(Qahira *self, GError **error)
 		read = qahira_loader_load_increment(loader,
 				priv->buffer + read, remaining, error);
 		if (-1 == read) {
-			goto error;
+			return NULL;
 		}
 	}
-	surface = qahira_loader_load_finish(loader);
+	surface = qahira_loader_load_finish(loader, error);
 exit:
 	g_free(type);
 	return surface;
-error:
-	surface = qahira_loader_load_finish(loader);
-	if (surface) {
-		cairo_surface_destroy(surface);
-	}
-	surface = NULL;
-	goto exit;
 }
 
 static inline gboolean

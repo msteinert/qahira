@@ -61,7 +61,7 @@ load_increment(QahiraLoader *self, guchar *buffer, gsize size, GError **error)
 }
 
 static cairo_surface_t *
-load_finish(QahiraLoader *self)
+load_finish(QahiraLoader *self, GError **error)
 {
 	// TODO
 	return NULL;

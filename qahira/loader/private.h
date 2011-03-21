@@ -33,7 +33,7 @@ qahira_loader_load_increment(QahiraLoader *self, guchar *buffer, gsize size,
 
 G_GNUC_INTERNAL
 cairo_surface_t *
-qahira_loader_load_finish(QahiraLoader *self);
+qahira_loader_load_finish(QahiraLoader *self, GError **error);
 
 G_GNUC_INTERNAL
 gboolean
@@ -46,6 +46,20 @@ qahira_loader_add_type(QahiraLoader *self, const gchar *type);
 G_GNUC_INTERNAL
 void
 qahira_loader_add_static_type(QahiraLoader *self, const gchar *type);
+
+G_GNUC_INTERNAL
+cairo_surface_t *
+qahira_loader_surface_create(QahiraLoader *self, cairo_format_t format,
+		gint width, gint height);
+
+G_GNUC_INTERNAL
+guchar *
+qahira_loader_surface_get_data(QahiraLoader *self, cairo_surface_t *surface);
+
+G_GNUC_INTERNAL
+gint
+qahira_loader_surface_get_stride(QahiraLoader *self,
+		cairo_surface_t *surface);
 
 G_END_DECLS
 

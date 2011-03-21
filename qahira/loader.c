@@ -33,8 +33,8 @@ G_DEFINE_ABSTRACT_TYPE(QahiraLoader, qahira_loader, G_TYPE_OBJECT)
 
 struct Private {
 	QahiraSurfaceFactory *factory;
-	guchar buffer[4096];
 	GSList *types;
+	guchar buffer[4096];
 };
 
 static void
@@ -130,11 +130,11 @@ qahira_loader_load(QahiraLoader *self, GInputStream *stream,
 	gssize read = 0;
 	while (TRUE) {
 		gsize remaining = size - read;
-		if (remaining == 0) {
+		if (0 == remaining) {
 			size = g_input_stream_read(stream, priv->buffer,
 					sizeof(priv->buffer), cancel, error);
 			if (-1 == size) {
-				goto error;
+				return NULL;
 			}
 			if (0 == size) {
 				break;
@@ -145,18 +145,10 @@ qahira_loader_load(QahiraLoader *self, GInputStream *stream,
 		read = qahira_loader_load_increment(self, priv->buffer + read,
 				remaining, error);
 		if (-1 == read) {
-			goto error;
+			return NULL;
 		}
 	}
-	return qahira_loader_load_finish(self);
-error:
-	{
-		cairo_surface_t *surface = qahira_loader_load_finish(self);
-		if (surface) {
-			cairo_surface_destroy(surface);
-		}
-	}
-	return NULL;
+	return qahira_loader_load_finish(self, error);
 }
 
 gboolean
@@ -211,9 +203,9 @@ qahira_loader_load_increment(QahiraLoader *self, guchar *buffer, gsize size,
 
 // private
 cairo_surface_t *
-qahira_loader_load_finish(QahiraLoader *self)
+qahira_loader_load_finish(QahiraLoader *self, GError **error)
 {
-	return QAHIRA_LOADER_GET_CLASS(self)->load_finish(self);
+	return QAHIRA_LOADER_GET_CLASS(self)->load_finish(self, error);
 }
 
 // protected
@@ -251,4 +243,40 @@ qahira_loader_add_static_type(QahiraLoader *self, const gchar *type)
 		return;
 	}
 	priv->types = g_slist_prepend(priv->types, (gpointer)string);
+}
+
+// protected
+cairo_surface_t *
+qahira_loader_surface_create(QahiraLoader *self, cairo_format_t format,
+		gint width, gint height)
+{
+	struct Private *priv = GET_PRIVATE(self);
+	if (G_UNLIKELY(!priv->factory)) {
+		return NULL;
+	}
+	return qahira_surface_factory_create(priv->factory, format,
+			width, height);
+}
+
+// protected
+guchar *
+qahira_loader_surface_get_data(QahiraLoader *self, cairo_surface_t *surface)
+{
+	struct Private *priv = GET_PRIVATE(self);
+	if (G_UNLIKELY(!priv->factory)) {
+		return NULL;
+	}
+	return qahira_surface_factory_get_data(priv->factory, surface);
+}
+
+// protected
+gint
+qahira_loader_surface_get_stride(QahiraLoader *self,
+		cairo_surface_t *surface)
+{
+	struct Private *priv = GET_PRIVATE(self);
+	if (G_UNLIKELY(!priv->factory)) {
+		return 0;
+	}
+	return qahira_surface_factory_get_stride(priv->factory, surface);
 }
