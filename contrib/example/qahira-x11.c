@@ -72,6 +72,10 @@ main(int argc, char *argv[])
 		g_message("failed to create window");
 		goto error;
 	}
+	Atom delete = XInternAtom(display, "WM_DELETE_WINDOW", True);
+	if (delete) {
+		XSetWMProtocols(display, window, &delete, 1);
+	}
 	surface = cairo_xlib_surface_create(display, window,
 			DefaultVisual(display, id), width, height);
 	cr = cairo_create(surface);
@@ -84,19 +88,21 @@ main(int argc, char *argv[])
 			cairo_set_source_surface(cr, image, 0., 0.);
 			cairo_paint(cr);
 			break;
+		case ClientMessage:
+			goto exit;
 		default:
 			break;
 		}
 	}
 exit:
-	if (image) {
-		cairo_surface_destroy(image);
-	}
 	if (qr) {
 		g_object_unref(qr);
 	}
 	if (cr) {
-		g_object_unref(cr);
+		cairo_destroy(cr);
+	}
+	if (image) {
+		cairo_surface_destroy(image);
 	}
 	if (surface) {
 		cairo_surface_destroy(surface);

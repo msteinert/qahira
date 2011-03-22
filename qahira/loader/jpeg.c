@@ -24,6 +24,7 @@
 #include "qahira/error.h"
 #include "qahira/loader/jpeg.h"
 #include <stdio.h>
+#include <string.h>
 #include <setjmp.h>
 #include <jpeglib.h>
 #include <jerror.h>
@@ -44,11 +45,11 @@ struct Private {
 	glong skip;
 	gint stride;
 	guchar *data;
-	sigjmp_buf env;
 	GError **error;
+	guchar **lines;
 	gboolean in_output;
-	gboolean got_header;
 	cairo_surface_t *surface;
+	sigjmp_buf env;
 	gchar message[JMSG_LENGTH_MAX];
 };
 
@@ -178,8 +179,8 @@ load_start(QahiraLoader *self, GError **error)
 		priv->surface = NULL;
 	}
 	priv->skip = 0;
+	priv->lines = NULL;
 	priv->in_output = FALSE;
-	priv->got_header = FALSE;
 	jpeg_abort_decompress(&priv->decompress);
 	return TRUE;
 }
@@ -212,20 +213,52 @@ colorspace_name(J_COLOR_SPACE colorspace)
  * \brief Convert JPEG grayscale to RGB.
  */
 static inline void
-convert_grayscale(QahiraLoader *self, guchar **lines)
+convert_grayscale(QahiraLoader *self)
 {
 	struct Private *priv = GET_PRIVATE(self);
-	gint w = priv->decompress.output_width;
-	for (gint i = priv->decompress.rec_outbuf_height - 1; i >= 0; --i) {
-		guchar *to, *from;
-		to = lines[i] + (w - 1) * 3;
-		from = lines[i] + w - 1;
-		for (gint j = w - 1; j >= 0; --j) {
-			to[0] = from[0];
-			to[1] = from[0];
-			to[2] = from[0];
-			to -= 3;
-			--from;
+	for (gint i = 0; i < priv->decompress.rec_outbuf_height; ++i) {
+		guchar *in = priv->lines[i];
+		guchar *out = priv->data + priv->stride
+			* (i + priv->decompress.output_scanline - 1);
+		for (gint j = 0; j < priv->decompress.output_width; ++j) {
+#if G_BYTE_ORDER == G_LITTLE_ENDIAN
+			out[0] = in[0];
+			out[1] = in[0];
+			out[2] = in[0];
+#else
+			out[1] = in[0];
+			out[2] = in[0];
+			out[3] = in[0];
+#endif
+			++in;
+			out += 4;
+		}
+	}
+}
+
+/**
+ * \brief Convert RGB
+ */
+static inline void
+convert_rgb(QahiraLoader *self)
+{
+	struct Private *priv = GET_PRIVATE(self);
+	for (gint i = 0; i < priv->decompress.rec_outbuf_height; ++i) {
+		guchar *in = priv->lines[i];
+		guchar *out = priv->data + priv->stride
+			* (i + priv->decompress.output_scanline - 1);
+		for (gint j = 0; j < priv->decompress.output_width; ++j) {
+#if G_BYTE_ORDER == G_LITTLE_ENDIAN
+			out[0] = in[2];
+			out[1] = in[1];
+			out[2] = in[0];
+#else
+			out[1] = in[0];
+			out[2] = in[1];
+			out[3] = in[2];
+#endif
+			in += 3;
+			out += 4;
 		}
 	}
 }
@@ -234,27 +267,45 @@ convert_grayscale(QahiraLoader *self, guchar **lines)
  * \brief Convert JPEG CMYK to RGB.
  */
 static inline void
-convert_cmyk(QahiraLoader *self, guchar **lines)
+convert_cmyk(QahiraLoader *self)
 {
 	struct Private *priv = GET_PRIVATE(self);
-	for (gint i = priv->decompress.rec_outbuf_height - 1; i >= 0; --i) {
-		guchar *p = lines[i];
+	for (gint i = 0; i < priv->decompress.rec_outbuf_height; ++i) {
+		guchar *in = priv->lines[i];
+		guchar *out = priv->data + priv->stride
+			* (i + priv->decompress.output_scanline - 1);
 		for (gint j = 0; j < priv->decompress.output_width; ++j) {
-			gint c = p[0];
-			gint m = p[1];
-			gint y = p[2];
-			gint k = p[3];
+#if G_BYTE_ORDER == G_LITTLE_ENDIAN
+			gint c = in[2];
+			gint m = in[3];
+			gint y = in[0];
+			gint k = in[1];
 			if (priv->decompress.saw_Adobe_marker) {
-				p[0] = k * c / 255;
-				p[1] = k * m / 255;
-				p[2] = k * y / 255;
+				out[0] = k * c / 255;
+				out[1] = k * m / 255;
+				out[2] = k * y / 255;
 			} else {
-				p[0] = (255 - k) * (255 - c) / 255;
-				p[1] = (255 - k) * (255 - m) / 255;
-				p[2] = (255 - k) * (255 - y) / 255;
+				out[0] = (255 - k) * (255 - c) / 255;
+				out[1] = (255 - k) * (255 - m) / 255;
+				out[2] = (255 - k) * (255 - y) / 255;
 			}
-			p[3] = 255;
-			p += 4;
+#else
+			gint c = in[0];
+			gint m = in[1];
+			gint y = in[2];
+			gint k = in[3];
+			if (priv->decompress.saw_Adobe_marker) {
+				out[1] = k * c / 255;
+				out[2] = k * m / 255;
+				out[3] = k * y / 255;
+			} else {
+				out[1] = (255 - k) * (255 - c) / 255;
+				out[2] = (255 - k) * (255 - m) / 255;
+				out[3] = (255 - k) * (255 - y) / 255;
+			}
+#endif
+			out += 4;
+			in += 4;
 		}
 	}
 }
@@ -267,12 +318,29 @@ load_header(QahiraLoader *self, GError **error)
 {
 	struct Private *priv = GET_PRIVATE(self);
 	gint status;
-	if (!priv->got_header) {
+	if (!priv->lines) {
+		jpeg_save_markers(&priv->decompress, JPEG_APP0 + 1, 0xffff);
 		status = jpeg_read_header(&priv->decompress, TRUE);
 		if (JPEG_SUSPENDED == status) {
 			return TRUE;
 		}
-		priv->got_header = TRUE;
+		jpeg_calc_output_dimensions(&priv->decompress);
+		gint stride = priv->decompress.output_width
+			* priv->decompress.output_components;
+		if (G_UNLIKELY(!stride)) {
+			g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_FAILURE,
+					Q_("jpeg: stride is zero"));
+			return FALSE;
+		}
+		priv->lines = priv->decompress.mem->alloc_sarray(
+				(j_common_ptr)&priv->decompress, JPOOL_IMAGE,
+				stride, priv->decompress.rec_outbuf_height);
+		if (G_UNLIKELY(!priv->lines)) {
+			g_set_error(error, QAHIRA_ERROR,
+					QAHIRA_ERROR_NO_MEMORY,
+					Q_("alloc_sarray returned NULL"));
+			return FALSE;
+		}
 	}
 	status = jpeg_start_decompress(&priv->decompress);
 	if (JPEG_SUSPENDED == status) {
@@ -281,10 +349,7 @@ load_header(QahiraLoader *self, GError **error)
 	priv->decompress.buffered_image = priv->decompress.progressive_mode;
 	priv->decompress.do_fancy_upsampling = FALSE;
 	priv->decompress.do_block_smoothing = FALSE;
-	priv->surface = qahira_loader_surface_create(self,
-			priv->decompress.output_components == 4
-				? CAIRO_FORMAT_ARGB32
-				: CAIRO_FORMAT_RGB24,
+	priv->surface = qahira_loader_surface_create(self, CAIRO_FORMAT_RGB24,
 			priv->decompress.output_width,
 			priv->decompress.output_height);
 	if (G_UNLIKELY(!priv->surface)) {
@@ -321,30 +386,22 @@ static inline gboolean
 load_lines(QahiraLoader *self, GError **error)
 {
 	struct Private *priv = GET_PRIVATE(self);
-	guchar *lines[4], **lptr, *rptr;
 	while (priv->decompress.output_scanline
 			< priv->decompress.output_height) {
-		lptr = lines;
-		rptr = priv->data;
-		for (gint i = 0; i < priv->decompress.rec_outbuf_height;
-				++i) {
-			*lptr++ = rptr;
-			rptr += priv->stride;
-		}
-		gint n = jpeg_read_scanlines(&priv->decompress, lines,
+		gint n = jpeg_read_scanlines(&priv->decompress, priv->lines,
 				priv->decompress.rec_outbuf_height);
 		if (!n) {
 			break;
 		}
 		switch (priv->decompress.out_color_space) {
 		case JCS_GRAYSCALE:
-			convert_grayscale(self, lines);
+			convert_grayscale(self);
 			break;
 		case JCS_RGB:
-			// nothing to do
+			convert_rgb(self);
 			break;
 		case JCS_CMYK:
-			convert_cmyk(self, lines);
+			convert_cmyk(self);
 			break;
 		default:
 			g_set_error(error, QAHIRA_ERROR,
@@ -353,7 +410,6 @@ load_lines(QahiraLoader *self, GError **error)
 					colorspace_name(priv->decompress.out_color_space));
 			return FALSE;
 		}
-		priv->data += n * priv->stride;
 	}
 	return TRUE;
 }

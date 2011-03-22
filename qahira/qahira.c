@@ -43,7 +43,8 @@ struct Private {
 	GCancellable *cancel;
 	gchar *filename;
 	gboolean owner;
-	guchar buffer[4096];
+	guchar *buffer;
+	gsize size;
 };
 
 static void
@@ -61,6 +62,7 @@ qahira_init(Qahira *self)
 	priv->loaders = g_ptr_array_new_with_free_func(destroy);
 	priv->loader_factory = qahira_loader_factory_new();
 	priv->surface_factory = qahira_image_surface_factory_new();
+	priv->size = (1024 * 4);
 }
 
 static void
@@ -94,6 +96,7 @@ static void
 finalize(GObject *base)
 {
 	struct Private *priv = GET_PRIVATE(base);
+	g_free(priv->buffer);
 	if (priv->filename && priv->owner) {
 		g_free(priv->filename);
 	}
@@ -144,8 +147,17 @@ qahira_surface_create(Qahira *self, GError **error)
 				Q_("image source is not set"));
 		goto exit;
 	}
+	if (G_UNLIKELY(!priv->buffer)) {
+		priv->buffer = g_try_malloc(priv->size);
+		if (G_UNLIKELY(!priv->buffer)) {
+			g_set_error(error, QAHIRA_ERROR,
+					QAHIRA_ERROR_NO_MEMORY,
+					Q_("g_try_malloc returned NULL"));
+			goto exit;
+		}
+	}
 	gsize size = g_input_stream_read(priv->stream, priv->buffer,
-			sizeof(priv->buffer), priv->cancel, error);
+			priv->size, priv->cancel, error);
 	if (-1 == size) {
 		goto exit;
 	}
@@ -176,7 +188,7 @@ qahira_surface_create(Qahira *self, GError **error)
 		gsize remaining = size - read;
 		if (remaining == 0) {
 			size = g_input_stream_read(priv->stream, priv->buffer,
-					sizeof(priv->buffer), priv->cancel,
+					priv->size, priv->cancel,
 					error);
 			if (-1 == size) {
 				return NULL;

@@ -34,13 +34,16 @@ G_DEFINE_ABSTRACT_TYPE(QahiraLoader, qahira_loader, G_TYPE_OBJECT)
 struct Private {
 	QahiraSurfaceFactory *factory;
 	GSList *types;
-	guchar buffer[4096];
+	guchar *buffer;
+	gsize size;
 };
 
 static void
 qahira_loader_init(QahiraLoader *self)
 {
 	self->priv = ASSIGN_PRIVATE(self);
+	struct Private *priv = GET_PRIVATE(self);
+	priv->size = (1024 * 4);
 }
 
 static void
@@ -58,6 +61,7 @@ static void
 finalize(GObject *base)
 {
 	struct Private *priv = GET_PRIVATE(base);
+	g_free(priv->buffer);
 	if (priv->types) {
 		g_slist_free(priv->types);
 	}
@@ -122,6 +126,15 @@ qahira_loader_load(QahiraLoader *self, GInputStream *stream,
 				error);
 	}
 	struct Private *priv = GET_PRIVATE(self);
+	if (G_UNLIKELY(!priv->buffer)) {
+		priv->buffer = g_try_malloc(priv->size);
+		if (G_UNLIKELY(!priv->buffer)) {
+			g_set_error(error, QAHIRA_ERROR,
+					QAHIRA_ERROR_NO_MEMORY,
+					Q_("g_try_malloc returned NULL"));
+			return NULL;
+		}
+	}
 	gboolean status = qahira_loader_load_start(self, error);
 	if (!status) {
 		return NULL;
@@ -132,7 +145,7 @@ qahira_loader_load(QahiraLoader *self, GInputStream *stream,
 		gsize remaining = size - read;
 		if (0 == remaining) {
 			size = g_input_stream_read(stream, priv->buffer,
-					sizeof(priv->buffer), cancel, error);
+					priv->size, cancel, error);
 			if (-1 == size) {
 				return NULL;
 			}
