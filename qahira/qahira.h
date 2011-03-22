@@ -74,6 +74,12 @@ G_GNUC_WARN_UNUSED_RESULT
 cairo_surface_t *
 qahira_surface_create(Qahira *self, GError **error);
 
+gint
+qahira_surface_get_width(Qahira *self, cairo_surface_t *surface);
+
+gint
+qahira_surface_get_height(Qahira *self, cairo_surface_t *surface);
+
 G_GNUC_WARN_UNUSED_RESULT
 gboolean
 qahira_set_filename(Qahira *self, const gchar *filename, GError **error);

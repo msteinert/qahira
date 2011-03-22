@@ -115,6 +115,15 @@ AS_IF([test "x$qahira_cv_enable_png" = "xyes"],
 		qahira_has_targa=yes],
 		[qahira_has_targa=no])
 AM_CONDITIONAL([QAHIRA_HAS_TARGA], [test "x$qahira_has_targa" = "xyes"])
+# Example applications
+AC_ARG_ENABLE([x11-example],
+	[AC_HELP_STRING([--enable-x11-example],
+		[enable test applications @<:@default=no@:>@])],
+	[PKG_CHECK_MODULES([X11], [x11])
+	PKG_CHECK_MODULES([CAIRO_XLIB], [cairo-xlib])
+	qahira_has_x11=yes],
+	[qahira_has_x11=no])
+AM_CONDITIONAL([QAHIRA_HAS_X11], [test "x$qahira_has_x11" = "xyes"])
 # Debug option
 AC_ARG_ENABLE([debug],
 	[AC_HELP_STRING([--enable-debug],
@@ -171,6 +180,7 @@ AH_BOTTOM(
 # Output files
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([
+	contrib/example/Makefile
 	qahira.pc
 	$QAHIRA_PKG_CONFIG_LOADERS
 	qahira/loader/Makefile

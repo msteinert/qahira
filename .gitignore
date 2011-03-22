@@ -17,6 +17,7 @@
 aclocal.m4
 autom4te.cache
 build
+compile
 config.cache
 config.guess
 config.h
@@ -28,6 +29,7 @@ configure
 cscope.files
 cscope.out
 depcomp
+INSTALL
 install-sh
 libtool
 qahira-*.tar.gz

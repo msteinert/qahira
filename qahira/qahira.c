@@ -199,6 +199,32 @@ exit:
 	return surface;
 }
 
+gint
+qahira_surface_get_width(Qahira *self, cairo_surface_t *surface)
+{
+	g_return_val_if_fail(QAHIRA_IS_QAHIRA(self), 0);
+	g_return_val_if_fail(surface, 0);
+	struct Private *priv = GET_PRIVATE(self);
+	if (G_UNLIKELY(!priv->surface_factory)) {
+		return 0;
+	}
+	return qahira_surface_factory_get_width(priv->surface_factory,
+			surface);
+}
+
+gint
+qahira_surface_get_height(Qahira *self, cairo_surface_t *surface)
+{
+	g_return_val_if_fail(QAHIRA_IS_QAHIRA(self), 0);
+	g_return_val_if_fail(surface, 0);
+	struct Private *priv = GET_PRIVATE(self);
+	if (G_UNLIKELY(!priv->surface_factory)) {
+		return 0;
+	}
+	return qahira_surface_factory_get_height(priv->surface_factory,
+			surface);
+}
+
 static inline gboolean
 open_file_stream(Qahira *self, const gchar *filename, GError **error)
 {
