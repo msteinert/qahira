@@ -304,6 +304,8 @@ convert_rgb(QahiraImage *self)
 
 /**
  * \brief Convert JPEG CMYK to RGB.
+ *
+ * This doesn't work properly, need to investigate color management.
  */
 static inline void
 convert_cmyk(QahiraImage *self)
@@ -315,10 +317,10 @@ convert_cmyk(QahiraImage *self)
 			* (i + priv->decompress.output_scanline - 1);
 		for (gint j = 0; j < priv->decompress.output_width; ++j) {
 #if G_BYTE_ORDER == G_LITTLE_ENDIAN
-			gint c = in[2];
-			gint m = in[3];
-			gint y = in[0];
-			gint k = in[1];
+			guchar c = in[0];
+			guchar m = in[1];
+			guchar y = in[2];
+			guchar k = in[3];
 			if (priv->decompress.saw_Adobe_marker) {
 				out[0] = k * c / 255;
 				out[1] = k * m / 255;
@@ -329,10 +331,10 @@ convert_cmyk(QahiraImage *self)
 				out[2] = (255 - k) * (255 - y) / 255;
 			}
 #else
-			gint c = in[0];
-			gint m = in[1];
-			gint y = in[2];
-			gint k = in[3];
+			guchar c = in[0];
+			guchar m = in[1];
+			guchar y = in[2];
+			guchar k = in[3];
 			if (priv->decompress.saw_Adobe_marker) {
 				out[1] = k * c / 255;
 				out[2] = k * m / 255;

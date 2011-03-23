@@ -51,31 +51,22 @@ static guint signals[SIGNAL_LAST] = { 0 };
 #define QAHIRA_BUFFER_SIZE (1024 * 4)
 
 struct Private {
-	GPtrArray *formats;
+	GSList *formats;
 };
-
-static void
-destroy(gpointer object)
-{
-	g_object_run_dispose(G_OBJECT(object));
-	g_object_unref(object);
-}
 
 static void
 qahira_init(Qahira *self)
 {
 	self->priv = ASSIGN_PRIVATE(self);
-	struct Private *priv = GET_PRIVATE(self);
-	priv->formats = g_ptr_array_new_with_free_func(destroy);
 }
 
 static void
 dispose(GObject *base)
 {
 	struct Private *priv = GET_PRIVATE(base);
-	if (priv->formats) {
-		g_ptr_array_free(priv->formats, TRUE);
-		priv->formats = NULL;
+	for (GSList *node = priv->formats; node; node = node->next) {
+		QahiraImage *image = node->data;
+		g_object_unref(image);
 	}
 	G_OBJECT_CLASS(qahira_parent_class)->dispose(base);
 }
@@ -212,23 +203,20 @@ qahira_get_image(Qahira *self, const gchar *mime)
 	g_return_val_if_fail(QAHIRA_IS_QAHIRA(self), NULL);
 	g_return_val_if_fail(mime, NULL);
 	struct Private *priv = GET_PRIVATE(self);
-	if (G_UNLIKELY(!priv->formats)) {
-		return NULL;
-	}
 	const gchar *string = g_intern_string(mime);
 	if (G_UNLIKELY(!string)) {
 		return NULL;
 	}
 	QahiraImage *image = NULL;
-	for (gint i = 0; i < priv->formats->len; ++i) {
-		image = priv->formats->pdata[i];
+	for (GSList *node = priv->formats; node; node = node->next) {
+		image = node->data;
 		if (qahira_image_supports_intern_string(image, string)) {
 			return image;
 		}
 	}
 	g_signal_emit(self, signals[SIGNAL_GET_IMAGE], 0, mime, &image);
 	if (image) {
-		g_ptr_array_add(priv->formats, image);
+		priv->formats = g_slist_prepend(priv->formats, image);
 	}
 	return image;
 }
