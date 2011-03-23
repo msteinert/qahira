@@ -19,10 +19,9 @@
 #include "config.h"
 #endif
 #include <glib.h>
-#include "qahira/loader.h"
-#include "qahira/surface/factory/image.h"
+#include "qahira/qahira.h"
 
-#define CLASS "/qahira/loader"
+#define CLASS "/qahira/image"
 
 static void
 setup(GString **path, gconstpointer data)
@@ -57,21 +56,17 @@ open_input(const gchar *filename)
 }
 
 #if QAHIRA_HAS_JPEG
-#include "qahira/loader/jpeg.h"
+#include "qahira/image/jpeg.h"
 static void
 test_jpeg(GString **path, gconstpointer data)
 {
-	QahiraLoader *jpeg = qahira_loader_jpeg_new();
+	QahiraImage *jpeg = qahira_image_jpeg_new();
 	g_assert(jpeg);
-	QahiraSurfaceFactory *image = qahira_image_surface_factory_new();
-	g_assert(image);
-	qahira_loader_set_surface_factory(jpeg, image);
-	g_object_unref(image);
 	g_string_append(*path, "sphinx.jpg");
 	GInputStream *stream = open_input((*path)->str);
 	GError *error = NULL;
 	cairo_surface_t *surface =
-		qahira_loader_load(jpeg, stream, NULL, &error);
+		qahira_image_load(jpeg, stream, NULL, &error);
 	g_assert(surface);
 	cairo_status_t status = cairo_surface_status(surface);
 	g_assert_cmpint(status, ==, CAIRO_STATUS_SUCCESS);
@@ -82,22 +77,22 @@ test_jpeg(GString **path, gconstpointer data)
 #endif // QAHIRA_HAS_JPEG
 
 #if QAHIRA_HAS_PNG
-#include "qahira/loader/png.h"
+#include "qahira/image/png.h"
 static void
 test_png(GString **path, gconstpointer data)
 {
-	QahiraLoader *png = qahira_loader_png_new();
+	QahiraImage *png = qahira_image_png_new();
 	g_assert(png);
 	g_object_unref(png);
 }
 #endif // QAHIRA_HAS_PNG
 
 #if QAHIRA_HAS_TARGA
-#include "qahira/loader/targa.h"
+#include "qahira/image/targa.h"
 static void
 test_targa(GString **path, gconstpointer data)
 {
-	QahiraLoader *targa = qahira_loader_targa_new();
+	QahiraImage *targa = qahira_image_targa_new();
 	g_assert(targa);
 	g_object_unref(targa);
 }

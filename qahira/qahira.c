@@ -18,13 +18,19 @@
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
-#include <gio/gunixinputstream.h>
-#include "qahira/loader/factory.h"
-#include "qahira/loader/private.h"
+#include "qahira/accumulator.h"
+#if QAHIRA_HAS_JPEG
+#include "qahira/image/jpeg.h"
+#endif // QAHIRA_HAS_JPEG
+#if QAHIRA_HAS_PNG
+#include "qahira/image/png.h"
+#endif // QAHIRA_HAS_PNG
+#if QAHIRA_HAS_TARGA
+#include "qahira/image/targa.h"
+#endif // QAHIRA_HAS_TARGA
 #include "qahira/macros.h"
+#include "qahira/marshal.h"
 #include "qahira/qahira.h"
-#include "qahira/surface/factory/image.h"
-#include "qahira/surface/factory.h"
 
 G_DEFINE_TYPE(Qahira, qahira, G_TYPE_OBJECT)
 
@@ -35,16 +41,17 @@ G_DEFINE_TYPE(Qahira, qahira, G_TYPE_OBJECT)
 #define GET_PRIVATE(instance) \
 	((struct Private *)((Qahira *)instance)->priv)
 
+enum Signals {
+	SIGNAL_GET_IMAGE,
+	SIGNAL_LAST
+};
+
+static guint signals[SIGNAL_LAST] = { 0 };
+
+#define QAHIRA_BUFFER_SIZE (1024 * 4)
+
 struct Private {
-	GPtrArray *loaders;
-	QahiraLoaderFactory *loader_factory;
-	QahiraSurfaceFactory *surface_factory;
-	GInputStream *stream;
-	GCancellable *cancel;
-	gchar *filename;
-	gboolean owner;
-	guchar *buffer;
-	gsize size;
+	GPtrArray *formats;
 };
 
 static void
@@ -59,48 +66,39 @@ qahira_init(Qahira *self)
 {
 	self->priv = ASSIGN_PRIVATE(self);
 	struct Private *priv = GET_PRIVATE(self);
-	priv->loaders = g_ptr_array_new_with_free_func(destroy);
-	priv->loader_factory = qahira_loader_factory_new();
-	priv->surface_factory = qahira_image_surface_factory_new();
-	priv->size = (1024 * 4);
+	priv->formats = g_ptr_array_new_with_free_func(destroy);
 }
 
 static void
 dispose(GObject *base)
 {
 	struct Private *priv = GET_PRIVATE(base);
-	if (priv->loaders) {
-		g_ptr_array_free(priv->loaders, TRUE);
-		priv->loaders = NULL;
-	}
-	if (priv->loader_factory) {
-		g_object_unref(priv->loader_factory);
-		priv->loader_factory = NULL;
-	}
-	if (priv->surface_factory) {
-		g_object_unref(priv->surface_factory);
-		priv->surface_factory = NULL;
-	}
-	if (priv->stream) {
-		g_object_unref(priv->stream);
-		priv->stream = NULL;
-	}
-	if (priv->cancel) {
-		g_object_unref(priv->cancel);
-		priv->cancel = NULL;
+	if (priv->formats) {
+		g_ptr_array_free(priv->formats, TRUE);
+		priv->formats = NULL;
 	}
 	G_OBJECT_CLASS(qahira_parent_class)->dispose(base);
 }
 
-static void
-finalize(GObject *base)
+static QahiraImage *
+get_image(Qahira *self, const gchar *mime)
 {
-	struct Private *priv = GET_PRIVATE(base);
-	g_free(priv->buffer);
-	if (priv->filename && priv->owner) {
-		g_free(priv->filename);
+#if QAHIRA_HAS_JPEG
+	if (g_content_type_equals(mime, "image/jpeg")) {
+		return qahira_image_jpeg_new();
 	}
-	G_OBJECT_CLASS(qahira_parent_class)->finalize(base);
+#endif // QAHIRA_HAS_JPEG
+#if QAHIRA_HAS_PNG
+	if (g_content_type_equals(mime, "image/png")) {
+		return qahira_image_png_new();
+	}
+#endif // QAHIRA_HAS_PNG
+#if QAHIRA_HAS_TARGA
+	if (g_content_type_equals(mime, "image/x-tga")) {
+		return qahira_image_targa_new();
+	}
+#endif // QAHIRA_HAS_TARGA
+	return NULL;
 }
 
 static void
@@ -108,8 +106,16 @@ qahira_class_init(QahiraClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS(klass);
 	object_class->dispose = dispose;
-	object_class->finalize = finalize;
+	klass->get_image = get_image;
 	g_type_class_add_private(klass, sizeof(struct Private));
+	// JoyBubble::hide
+	signals[SIGNAL_GET_IMAGE] =
+		g_signal_new(g_intern_static_string("get-image"),
+			G_OBJECT_CLASS_TYPE(klass), G_SIGNAL_RUN_LAST,
+			G_STRUCT_OFFSET(QahiraClass, get_image),
+			qahira_object_accumulator, NULL,
+			qahira_marshal_OBJECT__STRING, G_TYPE_OBJECT,
+			1, G_TYPE_STRING);
 }
 
 Qahira *
@@ -118,273 +124,113 @@ qahira_new(void)
 	return g_object_new(QAHIRA_TYPE_QAHIRA, NULL);
 }
 
-static void
-reset(Qahira *self)
-{
-	g_return_if_fail(QAHIRA_IS_QAHIRA(self));
-	struct Private *priv = GET_PRIVATE(self);
-	if (priv->stream) {
-		g_object_unref(priv->stream);
-		priv->stream = NULL;
-	}
-	if (priv->filename) {
-		if (priv->owner) {
-			g_free(priv->filename);
-		}
-		priv->filename = NULL;
-	}
-}
-
 cairo_surface_t *
-qahira_surface_create(Qahira *self, GError **error)
+qahira_load_file(Qahira *self, GFile *file, GCancellable *cancel,
+		GError **error)
 {
-	g_return_val_if_fail(QAHIRA_IS_QAHIRA(self), NULL);
-	struct Private *priv = GET_PRIVATE(self);
+	qahira_return_error_if_fail(QAHIRA_IS_QAHIRA(self), NULL, error);
+	qahira_return_error_if_fail(G_IS_FILE(file), NULL, error);
 	cairo_surface_t *surface = NULL;
-	gchar *type = NULL;
-	if (!priv->stream) {
-		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_FAILURE,
-				Q_("image source is not set"));
+	GInputStream *stream = NULL;
+	guchar *buffer = NULL;
+	gchar *mime = NULL;
+	gchar *filename = g_file_get_path(file);
+	if (G_UNLIKELY(!filename)) {
+		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_NO_MEMORY,
+				Q_("out of memory"));
 		goto exit;
 	}
-	if (G_UNLIKELY(!priv->buffer)) {
-		priv->buffer = g_try_malloc(priv->size);
-		if (G_UNLIKELY(!priv->buffer)) {
+	stream = G_INPUT_STREAM(g_file_read(file, cancel, error));
+	if (G_UNLIKELY(!stream)) {
+		goto exit;
+	}
+	if (G_IS_SEEKABLE(stream)
+			&& g_seekable_can_seek(G_SEEKABLE(stream))) {
+		buffer = g_try_malloc(QAHIRA_BUFFER_SIZE);
+		if (G_UNLIKELY(!buffer)) {
 			g_set_error(error, QAHIRA_ERROR,
 					QAHIRA_ERROR_NO_MEMORY,
-					Q_("g_try_malloc returned NULL"));
+					Q_("out of memory"));
+			goto exit;
+		}
+		gssize size = g_input_stream_read(stream, buffer,
+				QAHIRA_BUFFER_SIZE, cancel, error);
+		if (-1 == size) {
+			goto exit;
+		}
+		if (!g_seekable_seek(G_SEEKABLE(stream), 0, G_SEEK_SET,
+				cancel, error)) {
 			goto exit;
 		}
 	}
-	gsize size = g_input_stream_read(priv->stream, priv->buffer,
-			priv->size, priv->cancel, error);
-	if (-1 == size) {
-		goto exit;
-	}
-	if (0 == size) {
-		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_EMPTY_FILE,
-				Q_("stream is empty"));
-		goto exit;
-	}
-	type = g_content_type_guess(priv->filename, priv->buffer, size, NULL);
-	if (G_UNLIKELY(!type)) {
+	mime = g_content_type_guess(filename, buffer,
+			buffer ? QAHIRA_BUFFER_SIZE : 0, NULL);
+	if (G_UNLIKELY(!mime)) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_FAILURE,
-				Q_("failed to guess content type"));
+				Q_("failed to mime content type"));
 		goto exit;
 	}
-	QahiraLoader *loader = qahira_get_loader(self, type);
-	if (G_UNLIKELY(!loader)) {
+	QahiraImage *image = qahira_get_image(self, mime);
+	if (G_UNLIKELY(!image)) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_UNSUPPORTED,
-				Q_("unsupported content type `%s'"), type);
+				Q_("unsupported mime type `%s'"), mime);
 		goto exit;
 	}
-	qahira_loader_set_surface_factory(loader, priv->surface_factory);
-	gboolean status = qahira_loader_load_start(loader, error);
-	if (!status) {
-		goto exit;
-	}
-	gssize read = 0;
-	while (TRUE) {
-		gsize remaining = size - read;
-		if (remaining == 0) {
-			size = g_input_stream_read(priv->stream, priv->buffer,
-					priv->size, priv->cancel,
-					error);
-			if (-1 == size) {
-				return NULL;
-			}
-			if (0 == size) {
-				break;
-			}
-			remaining = size;
-			read = 0;
-		}
-		read = qahira_loader_load_increment(loader,
-				priv->buffer + read, remaining, error);
-		if (-1 == read) {
-			return NULL;
-		}
-	}
-	surface = qahira_loader_load_finish(loader, error);
+	surface = qahira_image_load(image, stream, cancel, error);
 exit:
-	g_free(type);
+	g_free(filename);
+	g_free(buffer);
+	g_free(mime);
+	if (stream) {
+		g_object_unref(stream);
+	}
 	return surface;
 }
 
-gint
-qahira_surface_get_width(Qahira *self, cairo_surface_t *surface)
+cairo_surface_t *
+qahira_load_filename(Qahira *self, const gchar *filename,
+		GCancellable *cancel, GError **error)
 {
-	g_return_val_if_fail(QAHIRA_IS_QAHIRA(self), 0);
-	g_return_val_if_fail(surface, 0);
-	struct Private *priv = GET_PRIVATE(self);
-	if (G_UNLIKELY(!priv->surface_factory)) {
-		return 0;
-	}
-	return qahira_surface_factory_get_width(priv->surface_factory,
-			surface);
-}
-
-gint
-qahira_surface_get_height(Qahira *self, cairo_surface_t *surface)
-{
-	g_return_val_if_fail(QAHIRA_IS_QAHIRA(self), 0);
-	g_return_val_if_fail(surface, 0);
-	struct Private *priv = GET_PRIVATE(self);
-	if (G_UNLIKELY(!priv->surface_factory)) {
-		return 0;
-	}
-	return qahira_surface_factory_get_height(priv->surface_factory,
-			surface);
-}
-
-static inline gboolean
-open_file_stream(Qahira *self, const gchar *filename, GError **error)
-{
-	struct Private *priv = GET_PRIVATE(self);
+	qahira_return_error_if_fail(QAHIRA_IS_QAHIRA(self), NULL, error);
+	qahira_return_error_if_fail(filename, NULL, error);
+	cairo_surface_t *surface = NULL;
 	GFile *file = g_file_new_for_path(filename);
-	if (G_UNLIKELY(!file)) {
-		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_FAILURE,
-				Q_("%s: g_file_new_for_path returned NULL"),
-				filename);
-		return FALSE;
+	if (!file) {
+		goto exit;
 	}
-	priv->stream = (GInputStream *)g_file_read(file, priv->cancel, error);
-	g_object_unref(file);
-	return priv->stream ? TRUE : FALSE;
-}
-
-gboolean
-qahira_set_filename(Qahira *self, const gchar *filename, GError **error)
-{
-	reset(self);
-	qahira_return_error_if_fail(QAHIRA_IS_QAHIRA(self), FALSE, error);
-	qahira_return_error_if_fail(filename, FALSE, error);
-	struct Private *priv = GET_PRIVATE(self);
-	priv->filename = g_strdup(filename);
-	priv->owner = TRUE;
-	return open_file_stream(self, filename, error);
-}
-
-gboolean
-qahira_set_static_filename(Qahira *self, const gchar *filename,
-		GError **error)
-{
-	reset(self);
-	qahira_return_error_if_fail(QAHIRA_IS_QAHIRA(self), FALSE, error);
-	qahira_return_error_if_fail(filename, FALSE, error);
-	struct Private *priv = GET_PRIVATE(self);
-	priv->filename = (gchar *)filename;
-	priv->owner = FALSE;
-	return open_file_stream(self, filename, error);
-}
-
-void
-qahira_set_descriptor(Qahira *self, int descriptor)
-{
-	reset(self);
-	g_return_if_fail(QAHIRA_IS_QAHIRA(self));
-	g_return_if_fail(-1 < descriptor);
-	struct Private *priv = GET_PRIVATE(self);
-	priv->stream = g_unix_input_stream_new(descriptor, FALSE);
-}
-
-void
-qahira_set_file(Qahira *self, FILE *file)
-{
-	reset(self);
-	g_return_if_fail(QAHIRA_IS_QAHIRA(self));
-	g_return_if_fail(file);
-	struct Private *priv = GET_PRIVATE(self);
-	int descriptor = fileno(file);
-	priv->stream = g_unix_input_stream_new(descriptor, FALSE);
-}
-
-void
-qahira_set_stream(Qahira *self, GInputStream *stream)
-{
-	reset(self);
-	g_return_if_fail(QAHIRA_IS_QAHIRA(self));
-	g_return_if_fail(G_IS_INPUT_STREAM(stream));
-	struct Private *priv = GET_PRIVATE(self);
-	priv->stream = g_object_ref(stream);
-}
-
-void
-qahira_set_cancellable(Qahira *self, GCancellable *cancel)
-{
-	g_return_if_fail(QAHIRA_IS_QAHIRA(self));
-	struct Private *priv = GET_PRIVATE(self);
-	if (priv->cancel) {
-		g_object_unref(priv->cancel);
+	surface = qahira_load_file(self, file, cancel, error);
+exit:
+	if (file) {
+		g_object_unref(file);
 	}
-	if (cancel && G_IS_CANCELLABLE(cancel)) {
-		priv->cancel = g_object_ref(cancel);
-	} else {
-		priv->cancel = NULL;
-	}
+	return surface;
 }
 
-GCancellable *
-qahira_get_cancellable(Qahira *self)
+QahiraImage *
+qahira_get_image(Qahira *self, const gchar *mime)
 {
 	g_return_val_if_fail(QAHIRA_IS_QAHIRA(self), NULL);
-	return GET_PRIVATE(self)->cancel;
-}
-
-QahiraLoaderFactory *
-qahira_get_loader_factory(Qahira *self)
-{
-	g_return_val_if_fail(QAHIRA_IS_QAHIRA(self), NULL);
-	return GET_PRIVATE(self)->loader_factory;
-}
-
-void
-qahira_set_surface_factory(Qahira *self, QahiraSurfaceFactory *factory)
-{
-	g_return_if_fail(QAHIRA_IS_QAHIRA(self));
-	g_return_if_fail(QAHIRA_IS_SURFACE_FACTORY(factory));
+	g_return_val_if_fail(mime, NULL);
 	struct Private *priv = GET_PRIVATE(self);
-	if (priv->surface_factory) {
-		g_object_unref(priv->surface_factory);
-	}
-	priv->surface_factory = g_object_ref(factory);
-}
-
-QahiraSurfaceFactory *
-qahira_get_surface_factory(Qahira *self)
-{
-	g_return_val_if_fail(QAHIRA_IS_QAHIRA(self), NULL);
-	return GET_PRIVATE(self)->surface_factory;
-}
-
-QahiraLoader *
-qahira_get_loader(Qahira *self, const gchar *type)
-{
-	g_return_val_if_fail(QAHIRA_IS_QAHIRA(self), NULL);
-	struct Private *priv = GET_PRIVATE(self);
-	if (G_UNLIKELY(!priv->loaders)) {
+	if (G_UNLIKELY(!priv->formats)) {
 		return NULL;
 	}
-	const gchar *string = g_intern_string(type);
+	const gchar *string = g_intern_string(mime);
 	if (G_UNLIKELY(!string)) {
 		return NULL;
 	}
-	for (gint i = 0; i < priv->loaders->len; ++i) {
-		QahiraLoader *loader = priv->loaders->pdata[i];
-		if (qahira_loader_supports_intern_string(loader, string)) {
-			return loader;
+	QahiraImage *image = NULL;
+	for (gint i = 0; i < priv->formats->len; ++i) {
+		image = priv->formats->pdata[i];
+		if (qahira_image_supports_intern_string(image, string)) {
+			return image;
 		}
 	}
-	if (G_UNLIKELY(!priv->loader_factory)) {
-		return NULL;
+	g_signal_emit(self, signals[SIGNAL_GET_IMAGE], 0, mime, &image);
+	if (image) {
+		g_ptr_array_add(priv->formats, image);
 	}
-	QahiraLoader *loader =
-		qahira_loader_factory_create(priv->loader_factory, type);
-	if (loader) {
-		g_ptr_array_add(priv->loaders, loader);
-		return loader;
-	}
-	return NULL;
+	return image;
 }
 
 #ifdef QAHIRA_TRACE

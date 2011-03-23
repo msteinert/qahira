@@ -22,9 +22,7 @@
 #include <gio/gio.h>
 #include <glib-object.h>
 #include <qahira/error.h>
-#include <qahira/loader/factory.h>
-#include <qahira/loader.h>
-#include <qahira/surface/factory.h>
+#include <qahira/image.h>
 #include <qahira/types.h>
 #include <stdio.h>
 
@@ -57,9 +55,13 @@ struct Qahira_ {
 	gpointer priv;
 };
 
+typedef QahiraImage *
+(*QahiraGetImage)(Qahira *self, const gchar *mime);
+
 struct QahiraClass_ {
 	/*< private >*/
 	GObjectClass parent_class;
+	QahiraGetImage get_image;
 };
 
 G_GNUC_NO_INSTRUMENT
@@ -72,49 +74,16 @@ qahira_new(void);
 
 G_GNUC_WARN_UNUSED_RESULT
 cairo_surface_t *
-qahira_surface_create(Qahira *self, GError **error);
-
-gint
-qahira_surface_get_width(Qahira *self, cairo_surface_t *surface);
-
-gint
-qahira_surface_get_height(Qahira *self, cairo_surface_t *surface);
-
-G_GNUC_WARN_UNUSED_RESULT
-gboolean
-qahira_set_filename(Qahira *self, const gchar *filename, GError **error);
-
-G_GNUC_WARN_UNUSED_RESULT
-gboolean
-qahira_set_static_filename(Qahira *self, const gchar *filename,
+qahira_load_file(Qahira *self, GFile *file, GCancellable *cancel,
 		GError **error);
 
-void
-qahira_set_descriptor(Qahira *self, int descriptor);
+G_GNUC_WARN_UNUSED_RESULT
+cairo_surface_t *
+qahira_load_filename(Qahira *self, const gchar *filename,
+		GCancellable *cancel, GError **error);
 
-void
-qahira_set_file(Qahira *self, FILE *file);
-
-void
-qahira_set_stream(Qahira *self, GInputStream *stream);
-
-void
-qahira_set_cancellable(Qahira *self, GCancellable *cancel);
-
-GCancellable *
-qahira_get_cancellable(Qahira *self);
-
-QahiraLoaderFactory *
-qahira_get_loader_factory(Qahira *self);
-
-void
-qahira_set_surface_factory(Qahira *self, QahiraSurfaceFactory *factory);
-
-QahiraSurfaceFactory *
-qahira_get_surface_factory(Qahira *self);
-
-QahiraLoader *
-qahira_get_loader(Qahira *self, const gchar *type);
+QahiraImage *
+qahira_get_image(Qahira *self, const gchar *mime);
 
 G_END_DECLS
 

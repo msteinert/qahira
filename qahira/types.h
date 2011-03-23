@@ -24,11 +24,7 @@ G_BEGIN_DECLS
 
 typedef struct Qahira_ Qahira;
 
-typedef struct QahiraLoader_ QahiraLoader;
-
-typedef struct QahiraLoaderFactory_ QahiraLoaderFactory;
-
-typedef struct QahiraSurfaceFactory_ QahiraSurfaceFactory;
+typedef struct QahiraImage_ QahiraImage;
 
 G_END_DECLS
 

@@ -20,14 +20,13 @@
 #endif
 #include <cairo-xlib.h>
 #include <glib.h>
-#include "qahira/qahira.h"
+#include <qahira/qahira.h>
 #include <stdlib.h>
 #include <X11/Xlib.h>
 
 int
 main(int argc, char *argv[])
 {
-	g_type_init();
 	cairo_surface_t *surface = NULL;
 	cairo_surface_t *image = NULL;
 	int status = EXIT_SUCCESS;
@@ -40,20 +39,25 @@ main(int argc, char *argv[])
 		g_message("image file not specified");
 		goto error;
 	}
+	g_type_init();
 	qr = qahira_new();
 	if (!qr) {
-		g_message("qahira_new returned NULL");
 		goto error;
 	}
-	if (!qahira_set_filename(qr, argv[1], &error)) {
-		goto error;
-	}
-	image = qahira_surface_create(qr, &error);
+	image = qahira_load_filename(qr, argv[1], NULL, &error);
 	if (!image) {
 		goto error;
 	}
-	gint width = qahira_surface_get_width(qr, image);
-	gint height = qahira_surface_get_height(qr, image);
+	gint width, height;
+	cairo_surface_type_t type = cairo_surface_get_type(image);
+	switch (type) {
+	case CAIRO_SURFACE_TYPE_IMAGE:
+		width = cairo_image_surface_get_width(image);
+		height = cairo_image_surface_get_height(image);
+		break;
+	default:
+		goto error;
+	}
 	display = XOpenDisplay(NULL);
 	if (!display) {
 		g_message("failed to open display: %s", XDisplayName(NULL));

@@ -12,16 +12,12 @@ LIBS = \
 	$(top_builddir)/qahira/libqahira-$(qahira_series).la
 # add unit tests
 check_PROGRAMS = \
-	qahira-test \
-	loader-test \
-	loader-factory-test \
-	surface-factory-test
+	image-test \
+	qahira-test
 TESTS = $(check_PROGRAMS)
 # add source files
+image_test_SOURCES = image-test.c
 qahira_test_SOURCES = qahira-test.c
-loader_test_SOURCES = loader-test.c
-loader_factory_test_SOURCES = loader-factory-test.c
-surface_factory_test_SOURCES = surface-factory-test.c
 # generate XML report
 qahira.xml: $(check_PROGRAMS)
 	gtester -k -o $@ $(check_PROGRAMS)

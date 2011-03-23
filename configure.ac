@@ -65,12 +65,17 @@ PKG_CHECK_MODULES([GIO_UNIX], [$qahira_gio_unix_version])
 qahira_cairo_version="cairo >= 1.10"
 AC_SUBST([qahira_cairo_version])
 PKG_CHECK_MODULES([CAIRO], [$qahira_cairo_version])
-# Configure image loaders
-QAHIRA_PKG_CONFIG_LOADERS=
-# JPEG image loader
+# Check for glib-genmarshal
+AC_ARG_VAR([GLIB_GENMARSHAL], [path to the glib-genmarshal(1) utility])
+AS_IF([test "x$GLIB_GENMARSHAL" = "x"],
+	[PKG_CHECK_EXISTS([$qahira_glib_version],
+		[GLIB_GENMARSHAL=`$PKG_CONFIG --variable=glib_genmarshal $qahira_glib_version`])])
+# Configure image formats
+QAHIRA_PKG_CONFIG_FORMATS=
+# JPEG image format 
 AC_ARG_ENABLE([jpeg],
 	[AC_HELP_STRING([--disable-jpeg],
-		[disable the JPEG image loader @<:@default=auto@:>@])],,
+		[disable the JPEG image format @<:@default=auto@:>@])],,
 	[enableval=auto])
 AC_CACHE_CHECK([for JPEG support], [qahira_cv_enable_jpeg],
 	[qahira_cv_enable_jpeg=$enableval])
@@ -78,40 +83,40 @@ AS_IF([test "x$qahira_cv_enable_jpeg" != "xno"],
 	[AC_CHECK_HEADER([jpeglib.h],
 		[AC_SEARCH_LIBS([jpeg_start_decompress], [jpeg],
 			[qahira_has_jpeg=yes
-			QAHIRA_PKG_CONFIG_LOADERS+=qahira/loader/qahira-jpeg.pc
+			QAHIRA_PKG_CONFIG_FORMATS+=" qahira/image/qahira-jpeg.pc"
 			AC_DEFINE([QAHIRA_HAS_JPEG], [1],
-				[Define to 1 if the JPEG loader is enabled.])],
+				[Define to 1 if the JPEG format is enabled.])],
 			[qahira_has_jpeg=no])],
 		[qahira_has_jpeg=no])],
 	[qahira_has_jpeg=no])
 AM_CONDITIONAL([QAHIRA_HAS_JPEG], [test "x$qahira_has_jpeg" = "xyes"])
-# PNG image loader
+# PNG image format
 AC_ARG_ENABLE([png],
 	[AC_HELP_STRING([--disable-png],
-		[disable the PNG image loader @<:@default=no@:>@])],,
+		[disable the PNG image format @<:@default=no@:>@])],,
 	[enableval=no])
 AC_CACHE_CHECK([for PNG support], [qahira_cv_enable_png],
 	[qahira_cv_enable_png=$enableval])
 AS_IF([test "x$qahira_cv_enable_png" != "xno"],
 	[PKG_CHECK_MODULES([PNG], [libpng],
-		[QAHIRA_PKG_CONFIG_LOADERS+=qahira/loader/qahira-png.pc
+		[QAHIRA_PKG_CONFIG_FORMATS+=" qahira/image/qahira-png.pc"
 		AC_DEFINE([QAHIRA_HAS_PNG], [1],
-			[Define to 1 if the PNG loader is enabled.])
+			[Define to 1 if the PNG format is enabled.])
 		qahira_has_png=yes],
 		[qahira_has_png=no])],
 	[qahira_has_png=no])
 AM_CONDITIONAL([QAHIRA_HAS_PNG], [test "x$qahira_has_png" = "xyes"])
-# TARGA image loader
+# TARGA image format
 AC_ARG_ENABLE([targa],
 	[AC_HELP_STRING([--disable-targa],
-		[disable the TARGA image loader @<:@default=no@:>@])],,
+		[disable the TARGA image format @<:@default=no@:>@])],,
 	[enableval=no])
 AC_CACHE_CHECK([for TARGA support], [qahira_cv_enable_targa],
 	[qahira_cv_enable_targa=$enableval])
 AS_IF([test "x$qahira_cv_enable_png" = "xyes"],
-		[QAHIRA_PKG_CONFIG_LOADERS+=qahira/loader/qahira-targa.pc
+		[QAHIRA_PKG_CONFIG_FORMATS+=" qahira/image/qahira-targa.pc"
 		AC_DEFINE([QAHIRA_HAS_TARGA], [1],
-			[Define to 1 if the TARGA loader is enabled.])
+			[Define to 1 if the TARGA format is enabled.])
 		qahira_has_targa=yes],
 		[qahira_has_targa=no])
 AM_CONDITIONAL([QAHIRA_HAS_TARGA], [test "x$qahira_has_targa" = "xyes"])
@@ -182,10 +187,9 @@ AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([
 	contrib/example/Makefile
 	qahira.pc
-	$QAHIRA_PKG_CONFIG_LOADERS
-	qahira/loader/Makefile
+	$QAHIRA_PKG_CONFIG_FORMATS
+	qahira/image/Makefile
 	qahira/Makefile
-	qahira/surface/factory/Makefile
 	tests/Makefile
 	Makefile
 ])
@@ -194,7 +198,7 @@ AC_MSG_RESULT([
 $PACKAGE_NAME build options:
 	Host: $host
 	Version: $VERSION
-	Image Loaders:
+	Image Formats:
 		JPEG: $qahira_has_jpeg
 		PNG: $qahira_has_png
 		TARGA: $qahira_has_targa

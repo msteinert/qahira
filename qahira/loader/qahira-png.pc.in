@@ -1,9 +1,0 @@
-prefix=@prefix@
-exec_prefix=@exec_prefix@
-libdir=@libdir@
-includedir=@includedir@/qahira-@qahira_series@
-
-Name: Qahira PNG Loader
-Description: Load PNG images as Cairo surfaces.
-Version: @VERSION@
-Requires: qahira = @VERSION@

@@ -15,52 +15,43 @@
  * along with Qahira. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef QAHIRA_LOADER_PRIVATE_H
-#define QAHIRA_LOADER_PRIVATE_H
+/**
+ * \brief Private/protected definitions for QahiraImage
+ * \author Michael Steinert <mike.steinert@gmail.com>
+ */
 
-#include <qahira/loader.h>
+#ifndef QAHIRA_IMAGE_PRIVATE_H
+#define QAHIRA_IMAGE_PRIVATE_H
+
+#include <qahira/image.h>
 
 G_BEGIN_DECLS
 
 G_GNUC_INTERNAL
-gboolean
-qahira_loader_load_start(QahiraLoader *self, GError **error);
-
-G_GNUC_INTERNAL
-gssize
-qahira_loader_load_increment(QahiraLoader *self, guchar *buffer, gsize size,
-		GError **error);
-
-G_GNUC_INTERNAL
-cairo_surface_t *
-qahira_loader_load_finish(QahiraLoader *self, GError **error);
-
-G_GNUC_INTERNAL
-gboolean
-qahira_loader_supports_intern_string(QahiraLoader *self, const gchar *type);
+void
+qahira_image_add_type(QahiraImage *self, const gchar *type);
 
 G_GNUC_INTERNAL
 void
-qahira_loader_add_type(QahiraLoader *self, const gchar *type);
+qahira_image_add_static_type(QahiraImage *self, const gchar *type);
 
 G_GNUC_INTERNAL
-void
-qahira_loader_add_static_type(QahiraLoader *self, const gchar *type);
+gboolean
+qahira_image_supports_intern_string(QahiraImage *self, const gchar *type);
 
 G_GNUC_INTERNAL
 cairo_surface_t *
-qahira_loader_surface_create(QahiraLoader *self, cairo_format_t format,
+qahira_image_surface_create(QahiraImage *self, cairo_format_t format,
 		gint width, gint height);
 
 G_GNUC_INTERNAL
 guchar *
-qahira_loader_surface_get_data(QahiraLoader *self, cairo_surface_t *surface);
+qahira_image_surface_get_data(QahiraImage *self, cairo_surface_t *surface);
 
 G_GNUC_INTERNAL
 gint
-qahira_loader_surface_get_stride(QahiraLoader *self,
-		cairo_surface_t *surface);
+qahira_image_surface_get_stride(QahiraImage *self, cairo_surface_t *surface);
 
 G_END_DECLS
 
-#endif /* QAHIRA_LOADER_PRIVATE_H */
+#endif // QAHIRA_IMAGE_PRIVATE_H
