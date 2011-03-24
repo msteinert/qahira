@@ -83,7 +83,7 @@ AS_IF([test "x$qahira_cv_enable_jpeg" != "xno"],
 	[AC_CHECK_HEADER([jpeglib.h],
 		[AC_SEARCH_LIBS([jpeg_start_decompress], [jpeg],
 			[qahira_has_jpeg=yes
-			QAHIRA_PKG_CONFIG_FORMATS+=" qahira/image/qahira-jpeg.pc"
+			QAHIRA_PKG_CONFIG_FORMATS+=" qahira-jpeg.pc"
 			AC_DEFINE([QAHIRA_HAS_JPEG], [1],
 				[Define to 1 if the JPEG format is enabled.])],
 			[qahira_has_jpeg=no])],
@@ -93,13 +93,13 @@ AM_CONDITIONAL([QAHIRA_HAS_JPEG], [test "x$qahira_has_jpeg" = "xyes"])
 # PNG image format
 AC_ARG_ENABLE([png],
 	[AC_HELP_STRING([--disable-png],
-		[disable the PNG image format @<:@default=no@:>@])],,
-	[enableval=no])
+		[disable the PNG image format @<:@default=auto@:>@])],,
+	[enableval=auto])
 AC_CACHE_CHECK([for PNG support], [qahira_cv_enable_png],
 	[qahira_cv_enable_png=$enableval])
 AS_IF([test "x$qahira_cv_enable_png" != "xno"],
 	[PKG_CHECK_MODULES([PNG], [libpng],
-		[QAHIRA_PKG_CONFIG_FORMATS+=" qahira/image/qahira-png.pc"
+		[QAHIRA_PKG_CONFIG_FORMATS+=" qahira-png.pc"
 		AC_DEFINE([QAHIRA_HAS_PNG], [1],
 			[Define to 1 if the PNG format is enabled.])
 		qahira_has_png=yes],
@@ -114,7 +114,7 @@ AC_ARG_ENABLE([targa],
 AC_CACHE_CHECK([for TARGA support], [qahira_cv_enable_targa],
 	[qahira_cv_enable_targa=$enableval])
 AS_IF([test "x$qahira_cv_enable_png" = "xyes"],
-		[QAHIRA_PKG_CONFIG_FORMATS+=" qahira/image/qahira-targa.pc"
+		[QAHIRA_PKG_CONFIG_FORMATS+=" qahira-targa.pc"
 		AC_DEFINE([QAHIRA_HAS_TARGA], [1],
 			[Define to 1 if the TARGA format is enabled.])
 		qahira_has_targa=yes],
@@ -188,7 +188,6 @@ AC_CONFIG_FILES([
 	contrib/example/Makefile
 	qahira.pc
 	$QAHIRA_PKG_CONFIG_FORMATS
-	qahira/image/Makefile
 	qahira/Makefile
 	tests/Makefile
 	Makefile

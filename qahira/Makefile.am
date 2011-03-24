@@ -1,7 +1,6 @@
 #                                        -*- Automake -*-
 # Process this file with automake to produce Makefile.in.
 
-SUBDIRS = image
 # generate marshalling routines
 $(srcdir)/marshal.h: marshal.list
 	$(AM_V_GEN)$(GLIB_GENMARSHAL) --prefix=qahira_marshal --header $< > $@
@@ -37,8 +36,6 @@ libqahira_@qahira_series_major@_@qahira_series_minor@_la_LDFLAGS = \
 	$(GIO_LIBS) \
 	$(GIO_UNIX_LIBS) \
 	$(CAIRO_LIBS)
-libqahira_@qahira_series_major@_@qahira_series_minor@_la_LIBADD = \
-	image/libqahira-image.la
 # install development headers
 pkgincludedir = $(includedir)/qahira-$(qahira_series)/qahira
 pkginclude_HEADERS = \
@@ -46,3 +43,27 @@ pkginclude_HEADERS = \
 	image.h \
 	types.h \
 	qahira.h
+# Image Formats
+imageincludedir = $(pkgincludedir)/image
+imageinclude_FILES =
+if QAHIRA_HAS_JPEG
+libqahira_@qahira_series_major@_@qahira_series_minor@_la_SOURCES += \
+	image-jpeg.c
+imageinclude_FILES += image/jpeg.h
+endif
+if QAHIRA_HAS_PNG
+libqahira_@qahira_series_major@_@qahira_series_minor@_la_CFLAGS += \
+	$(PNG_CFLAGS)
+libqahira_@qahira_series_major@_@qahira_series_minor@_la_LDFLAGS += \
+	$(PNG_LIBS)
+libqahira_@qahira_series_major@_@qahira_series_minor@_la_SOURCES += \
+	image-png.c
+imageinclude_FILES += image/png.h
+endif
+if QAHIRA_HAS_TARGA
+libqahira_@qahira_series_major@_@qahira_series_minor@_la_SOURCES += \
+	image-targa.c
+imageinclude_FILES += image/targa.h
+endif
+EXTRA_DIST = \
+	marshal.list

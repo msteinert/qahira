@@ -23,6 +23,7 @@
 #endif
 #include "qahira/error.h"
 #include "qahira/image/jpeg.h"
+#include "qahira/image/private.h"
 #include "qahira/marshal.h"
 #include <stdio.h>
 #include <string.h>
@@ -232,9 +233,9 @@ colorspace_name(J_COLOR_SPACE colorspace)
 {
 	switch (colorspace) {
 	case JCS_UNKNOWN:
-		return "UNKNOWN"; 
+		return "Unknown"; 
 	case JCS_GRAYSCALE:
-		return "GRAYSCALE";
+		return "Grayscale";
 	case JCS_RGB:
 		return "RGB";
 	case JCS_YCbCr:
@@ -244,7 +245,7 @@ colorspace_name(J_COLOR_SPACE colorspace)
 	case JCS_YCCK:
 		return "YCCK";
 	default:
-		return "invalid";
+		return "Invalid";
 	}
 }
 
@@ -304,8 +305,6 @@ convert_rgb(QahiraImage *self)
 
 /**
  * \brief Convert JPEG CMYK to RGB.
- *
- * This doesn't work properly, need to investigate color management.
  */
 static inline void
 convert_cmyk(QahiraImage *self)
@@ -322,13 +321,13 @@ convert_cmyk(QahiraImage *self)
 			guchar y = in[2];
 			guchar k = in[3];
 			if (priv->decompress.saw_Adobe_marker) {
-				out[0] = k * c / 255;
+				out[2] = k * c / 255;
 				out[1] = k * m / 255;
-				out[2] = k * y / 255;
+				out[0] = k * y / 255;
 			} else {
-				out[0] = (255 - k) * (255 - c) / 255;
+				out[2] = (255 - k) * (255 - c) / 255;
 				out[1] = (255 - k) * (255 - m) / 255;
-				out[2] = (255 - k) * (255 - y) / 255;
+				out[0] = (255 - k) * (255 - y) / 255;
 			}
 #else
 			guchar c = in[0];
@@ -336,13 +335,13 @@ convert_cmyk(QahiraImage *self)
 			guchar y = in[2];
 			guchar k = in[3];
 			if (priv->decompress.saw_Adobe_marker) {
-				out[1] = k * c / 255;
+				out[3] = k * c / 255;
 				out[2] = k * m / 255;
-				out[3] = k * y / 255;
+				out[1] = k * y / 255;
 			} else {
-				out[1] = (255 - k) * (255 - c) / 255;
+				out[3] = (255 - k) * (255 - c) / 255;
 				out[2] = (255 - k) * (255 - m) / 255;
-				out[3] = (255 - k) * (255 - y) / 255;
+				out[1] = (255 - k) * (255 - y) / 255;
 			}
 #endif
 			out += 4;
@@ -455,9 +454,9 @@ load(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
 		goto error;
 	}
 	priv->stride = qahira_image_surface_get_stride(self, priv->surface);
-	if (G_UNLIKELY(!priv->stride)) {
+	if (G_UNLIKELY(0 > priv->stride)) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_FAILURE,
-				Q_("jpeg: stride is zero"));
+				Q_("jpeg: invalid stride"));
 		goto error;
 	}
 	if (priv->count != priv->decompress.rec_outbuf_height) {

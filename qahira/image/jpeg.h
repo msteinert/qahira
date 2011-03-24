@@ -18,7 +18,7 @@
 #ifndef QAHIRA_IMAGE_JPEG_H
 #define QAHIRA_IMAGE_JPEG_H
 
-#include <qahira/image/private.h>
+#include <qahira/image.h>
 
 G_BEGIN_DECLS
 

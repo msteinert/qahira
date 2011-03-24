@@ -28,6 +28,7 @@
 #if QAHIRA_HAS_TARGA
 #include "qahira/image/targa.h"
 #endif // QAHIRA_HAS_TARGA
+#include "qahira/image/private.h"
 #include "qahira/macros.h"
 #include "qahira/marshal.h"
 #include "qahira/qahira.h"
