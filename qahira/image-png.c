@@ -46,20 +46,6 @@ qahira_image_png_init(QahiraImagePng *self)
 }
 
 static void
-dispose(GObject *base)
-{
-	//struct Private *priv = GET_PRIVATE(base);
-	G_OBJECT_CLASS(qahira_image_png_parent_class)->dispose(base);
-}
-
-static void
-finalize(GObject *base)
-{
-	//struct Private *priv = GET_PRIVATE(base);
-	G_OBJECT_CLASS(qahira_image_png_parent_class)->finalize(base);
-}
-
-static void
 error_fn(png_structp png, png_const_charp message)
 {
 	struct Private *priv = png_get_error_ptr(png);
@@ -308,9 +294,6 @@ error:
 static void
 qahira_image_png_class_init(QahiraImagePngClass *klass)
 {
-	GObjectClass *object_class = G_OBJECT_CLASS(klass);
-	object_class->dispose = dispose;
-	object_class->finalize = finalize;
 	QahiraImageClass *image_class = QAHIRA_IMAGE_CLASS(klass);
 	image_class->load = load;
 	g_type_class_add_private(klass, sizeof(struct Private));

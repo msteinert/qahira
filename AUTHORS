@@ -1,1 +1,8 @@
-Michael Steinert <mike.steinert@gmail.com>
+Matthias Brueckner <matbrc@gmx.de> TARGA image format
+Michael Fulbright <drmike@redhat.com> JPEG image format
+Kristian Høgsberg <krh@redhat.com> PNG image format
+Federico Mena-Quintero <federico@gimp.org> JPEG image format
+Michael Steinert <mike.steinert@gmail.com> Original library
+Chris Wilson <chris@chris-wilson.co.uk> PNG image format
+Carl D. Worth <cworth@cworth.org> PNG image format
+Michael Zucchi <zucchi@zedzone.mmc.com.au> JPEG image format

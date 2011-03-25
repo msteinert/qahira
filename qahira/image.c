@@ -166,7 +166,7 @@ qahira_image_class_init(QahiraImageClass *klass)
 	g_object_class_install_property(object_class, PROP_MIME_TYPE,
 		g_param_spec_string("mime-type", Q_("MIME type"),
 			Q_("MIME type(s) of this image format"), NULL,
-			G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
+			G_PARAM_WRITABLE));
 }
 
 cairo_surface_t *

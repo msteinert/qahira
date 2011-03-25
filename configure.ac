@@ -109,11 +109,11 @@ AM_CONDITIONAL([QAHIRA_HAS_PNG], [test "x$qahira_has_png" = "xyes"])
 # TARGA image format
 AC_ARG_ENABLE([targa],
 	[AC_HELP_STRING([--disable-targa],
-		[disable the TARGA image format @<:@default=no@:>@])],,
-	[enableval=no])
+		[disable the TARGA image format @<:@default=yes@:>@])],,
+	[enableval=yes])
 AC_CACHE_CHECK([for TARGA support], [qahira_cv_enable_targa],
 	[qahira_cv_enable_targa=$enableval])
-AS_IF([test "x$qahira_cv_enable_png" = "xyes"],
+AS_IF([test "x$qahira_cv_enable_targa" = "xyes"],
 		[QAHIRA_PKG_CONFIG_FORMATS+=" qahira-targa.pc"
 		AC_DEFINE([QAHIRA_HAS_TARGA], [1],
 			[Define to 1 if the TARGA format is enabled.])
