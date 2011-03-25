@@ -22,6 +22,7 @@
 #include <glib.h>
 #include <qahira/qahira.h>
 #include <stdlib.h>
+#include <string.h>
 #include <X11/Xlib.h>
 
 int
@@ -75,6 +76,23 @@ main(int argc, char *argv[])
 	if (!window) {
 		g_message("failed to create window");
 		goto error;
+	}
+	Atom format = XInternAtom(display, "UTF8_STRING", False);
+	if (format) {
+		const gchar *name = "Qahira Image Viewer";
+		gsize size = strlen(name);
+		XChangeProperty(display, window,
+				XInternAtom(display, "_NET_WM_NAME", False),
+				format, 8, PropModeReplace,
+				(const guchar *)name, size);
+		XChangeProperty(display, window,
+				XInternAtom(display, "WM_NAME", False),
+				format, 8, PropModeReplace,
+				(const guchar *)name, size);
+		XChangeProperty(display, window,
+				XInternAtom(display, "WM_ICON_NAME", False),
+				format, 8, PropModeReplace,
+				(const guchar *)name, size);
 	}
 	Atom delete = XInternAtom(display, "WM_DELETE_WINDOW", True);
 	if (delete) {
