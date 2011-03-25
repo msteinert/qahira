@@ -84,13 +84,37 @@ main(int argc, char *argv[])
 			DefaultVisual(display, id), width, height);
 	cr = cairo_create(surface);
 	XMapWindow(display, window);
+	gdouble xscale = 1., yscale = 1.;
 	XEvent event;
 	while (TRUE) {
 		XNextEvent(display, &event);
 		switch (event.type) {
 		case Expose:
+			cairo_save(cr);
+			cairo_rectangle(cr, event.xexpose.x, event.xexpose.y,
+					event.xexpose.width,
+					event.xexpose.height);
+			cairo_clip(cr);
+			cairo_set_operator(cr, CAIRO_OPERATOR_CLEAR);
+			cairo_paint(cr);
+			cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
+			cairo_scale(cr, xscale, yscale);
 			cairo_set_source_surface(cr, image, 0., 0.);
 			cairo_paint(cr);
+			cairo_restore(cr);
+			break;
+		case ConfigureNotify:
+			cairo_xlib_surface_set_size(surface,
+					event.xconfigure.width,
+					event.xconfigure.height);
+			if (event.xconfigure.width != width) {
+				xscale = (gdouble)event.xconfigure.width
+					/ width;
+			}
+			if (event.xconfigure.height != height) {
+				yscale = (gdouble)event.xconfigure.height
+					/ height;
+			}
 			break;
 		case ClientMessage:
 			goto exit;
