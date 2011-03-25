@@ -24,10 +24,67 @@
 #define CLASS "/qahira"
 
 static void
-test(gpointer *fixture, gconstpointer data)
+setup(GString **path, gconstpointer data)
+{
+	const gchar *srcdir = g_getenv("srcdir");
+	*path = g_string_new(srcdir ? srcdir : ".");
+	g_assert(*path);
+	g_string_append(*path, "/../contrib/");
+}
+
+static void
+teardown(GString **path, gconstpointer data)
+{
+	g_string_free(*path, TRUE);
+}
+
+static void
+test(GString **path, gconstpointer data)
 {
 	Qahira *qr = qahira_new();
 	g_assert(qr);
+	GString *file;
+	GError *error = NULL;
+	cairo_surface_t *surface = NULL;
+#if QAHIRA_HAS_JPEG
+	file = g_string_new((*path)->str);
+	g_assert(file);
+	g_string_append(file, "sphinx.jpg");
+	surface = qahira_load_filename(qr, file->str, NULL, &error);
+	g_string_free(file, TRUE);
+	if (!surface) {
+		g_message("%s: %s", file->str, error->message);
+		g_error_free(error);
+		g_assert(surface);
+	}
+	cairo_surface_destroy(surface);
+#endif
+#if QAHIRA_HAS_PNG
+	file = g_string_new((*path)->str);
+	g_assert(file);
+	g_string_append(file, "sphinx.png");
+	surface = qahira_load_filename(qr, file->str, NULL, &error);
+	g_string_free(file, TRUE);
+	if (!surface) {
+		g_message("%s: %s", file->str, error->message);
+		g_error_free(error);
+		g_assert(surface);
+	}
+	cairo_surface_destroy(surface);
+#endif
+#if QAHIRA_HAS_TARGA
+	file = g_string_new((*path)->str);
+	g_assert(file);
+	g_string_append(file, "sphinx.tga");
+	surface = qahira_load_filename(qr, file->str, NULL, &error);
+	g_string_free(file, TRUE);
+	if (!surface) {
+		g_message("%s: %s", file->str, error->message);
+		g_error_free(error);
+		g_assert(surface);
+	}
+	cairo_surface_destroy(surface);
+#endif
 	g_object_unref(qr);
 }
 
@@ -36,6 +93,6 @@ main(int argc, char *argv[])
 {
 	g_test_init(&argc, &argv, NULL);
 	g_type_init();
-	g_test_add(CLASS, gpointer, NULL, NULL, test, NULL);
+	g_test_add(CLASS, GString *, NULL, setup, test, teardown);
 	return g_test_run();
 }

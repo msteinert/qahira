@@ -83,6 +83,16 @@ test_png(GString **path, gconstpointer data)
 {
 	QahiraImage *png = qahira_image_png_new();
 	g_assert(png);
+	g_string_append(*path, "sphinx.png");
+	GInputStream *stream = open_input((*path)->str);
+	GError *error = NULL;
+	cairo_surface_t *surface =
+		qahira_image_load(png, stream, NULL, &error);
+	g_assert(surface);
+	cairo_status_t status = cairo_surface_status(surface);
+	g_assert_cmpint(status, ==, CAIRO_STATUS_SUCCESS);
+	cairo_surface_destroy(surface);
+	g_object_unref(stream);
 	g_object_unref(png);
 }
 #endif // QAHIRA_HAS_PNG
@@ -94,6 +104,16 @@ test_targa(GString **path, gconstpointer data)
 {
 	QahiraImage *targa = qahira_image_targa_new();
 	g_assert(targa);
+	g_string_append(*path, "sphinx.tga");
+	GInputStream *stream = open_input((*path)->str);
+	GError *error = NULL;
+	cairo_surface_t *surface =
+		qahira_image_load(targa, stream, NULL, &error);
+	g_assert(surface);
+	cairo_status_t status = cairo_surface_status(surface);
+	g_assert_cmpint(status, ==, CAIRO_STATUS_SUCCESS);
+	cairo_surface_destroy(surface);
+	g_object_unref(stream);
 	g_object_unref(targa);
 }
 #endif // QAHIRA_HAS_TARGA
