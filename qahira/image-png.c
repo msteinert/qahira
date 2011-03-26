@@ -380,7 +380,7 @@ unpremultiply_transform_fn(png_structp png, png_row_infop row, png_bytep data)
 	}
 }
 
-gboolean
+static gboolean
 save(QahiraImage *self, cairo_surface_t *surface, GOutputStream *stream,
 		GCancellable *cancel, GError **error)
 {
@@ -508,6 +508,7 @@ qahira_image_png_class_init(QahiraImagePngClass *klass)
 {
 	QahiraImageClass *image_class = QAHIRA_IMAGE_CLASS(klass);
 	image_class->load = load;
+	image_class->save = save;
 	g_type_class_add_private(klass, sizeof(struct Private));
 }
 
