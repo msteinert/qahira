@@ -66,6 +66,18 @@ G_GNUC_WARN_UNUSED_RESULT
 QahiraImage *
 qahira_image_png_new(void);
 
+void
+qahira_image_png_set_compression(QahiraImage *self, gint compression);
+
+gint
+qahira_image_png_get_compression(QahiraImage *self);
+
+void
+qahira_image_set_interlace(QahiraImage *self, gboolean interlace);
+
+gboolean
+qahira_image_get_interlace(QahiraImage *self);
+
 G_END_DECLS
 
 #endif // QAHIRA_IMAGE_PNG_H
