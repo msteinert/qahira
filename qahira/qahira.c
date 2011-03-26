@@ -117,18 +117,16 @@ qahira_new(void)
 }
 
 cairo_surface_t *
-qahira_load_file(Qahira *self, GFile *file, GError **error)
+qahira_load(Qahira *self, const gchar *filename, GError **error)
 {
 	qahira_return_error_if_fail(QAHIRA_IS_QAHIRA(self), NULL, error);
-	qahira_return_error_if_fail(G_IS_FILE(file), NULL, error);
+	qahira_return_error_if_fail(filename, NULL, error);
 	cairo_surface_t *surface = NULL;
 	GInputStream *stream = NULL;
 	guchar *buffer = NULL;
 	gchar *mime = NULL;
-	gchar *filename = g_file_get_path(file);
-	if (G_UNLIKELY(!filename)) {
-		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_NO_MEMORY,
-				Q_("out of memory"));
+	GFile *file = g_file_new_for_path(filename);
+	if (G_UNLIKELY(!file)) {
 		goto exit;
 	}
 	stream = G_INPUT_STREAM(g_file_read(file, NULL, error));
@@ -158,7 +156,7 @@ qahira_load_file(Qahira *self, GFile *file, GError **error)
 			buffer ? QAHIRA_BUFFER_SIZE : 0, NULL);
 	if (G_UNLIKELY(!mime)) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_FAILURE,
-				Q_("failed to mime content type"));
+				Q_("failed to guess content type"));
 		goto exit;
 	}
 	QahiraImage *image = qahira_get_image(self, mime);
@@ -169,27 +167,11 @@ qahira_load_file(Qahira *self, GFile *file, GError **error)
 	}
 	surface = qahira_image_load(image, stream, NULL, error);
 exit:
-	g_free(filename);
 	g_free(buffer);
 	g_free(mime);
 	if (stream) {
 		g_object_unref(stream);
 	}
-	return surface;
-}
-
-cairo_surface_t *
-qahira_load(Qahira *self, const gchar *filename, GError **error)
-{
-	qahira_return_error_if_fail(QAHIRA_IS_QAHIRA(self), NULL, error);
-	qahira_return_error_if_fail(filename, NULL, error);
-	cairo_surface_t *surface = NULL;
-	GFile *file = g_file_new_for_path(filename);
-	if (G_UNLIKELY(!file)) {
-		goto exit;
-	}
-	surface = qahira_load_file(self, file, error);
-exit:
 	if (file) {
 		g_object_unref(file);
 	}
@@ -197,24 +179,24 @@ exit:
 }
 
 gboolean
-qahira_save_file(Qahira *self, cairo_surface_t *surface,
-		GFile *file, GError **error)
+qahira_save(Qahira *self, cairo_surface_t *surface, const gchar *filename,
+		GError **error)
 {
 	qahira_return_error_if_fail(QAHIRA_IS_QAHIRA(self), FALSE, error);
-	qahira_return_error_if_fail(G_IS_FILE(file), FALSE, error);
+	qahira_return_error_if_fail(filename, FALSE, error);
 	GOutputStream *stream = NULL;
 	gboolean status = FALSE;
-	gchar *mime = NULL;
-	gchar *filename = g_file_get_path(file);
-	if (G_UNLIKELY(!filename)) {
-		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_NO_MEMORY,
-				Q_("out of memory"));
-		goto exit;
-	}
-	mime = g_content_type_guess(filename, NULL, 0, NULL);
+	GFile *file = NULL;
+	gchar *mime = g_content_type_guess(filename, NULL, 0, NULL);
 	if (G_UNLIKELY(!mime)) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_FAILURE,
-				Q_("failed to mime content type"));
+				Q_("failed to guess content type"));
+		goto exit;
+	}
+	file = g_file_new_for_path(filename);
+	if (G_UNLIKELY(!file)) {
+		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_NO_MEMORY,
+				Q_("out of memory"));
 		goto exit;
 	}
 	QahiraImage *image = qahira_get_image(self, mime);
@@ -230,27 +212,10 @@ qahira_save_file(Qahira *self, cairo_surface_t *surface,
 	}
 	status = qahira_image_save(image, surface, stream, NULL, error);
 exit:
-	g_free(filename);
 	g_free(mime);
 	if (stream) {
 		g_object_unref(stream);
 	}
-	return status;
-}
-
-gboolean
-qahira_save(Qahira *self, cairo_surface_t *surface,
-		const gchar *filename, GError **error)
-{
-	qahira_return_error_if_fail(QAHIRA_IS_QAHIRA(self), FALSE, error);
-	qahira_return_error_if_fail(filename, FALSE, error);
-	gboolean status = FALSE;
-	GFile *file = g_file_new_for_path(filename);
-	if (G_UNLIKELY(!file)) {
-		goto exit;
-	}
-	status = qahira_save_file(self, surface, file, error);
-exit:
 	if (file) {
 		g_object_unref(file);
 	}
