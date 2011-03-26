@@ -208,8 +208,8 @@ load(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
 	}
 	png_set_filler(png, 0xff, PNG_FILLER_AFTER);
 	png_read_update_info(png, info);
-	png_get_IHDR(png, info, &width, &height, &depth, &color,
-			&interlace, NULL, NULL);
+	png_get_IHDR(png, info, &width, &height, &depth, &color, &interlace,
+			NULL, NULL);
 	if (G_UNLIKELY(8 != depth)) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_CORRUPT_IMAGE,
 				Q_("png: unsupported bit depth"));
@@ -219,13 +219,11 @@ load(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
 	switch (color) {
 	case PNG_COLOR_TYPE_RGB:
 		format = CAIRO_FORMAT_ARGB32;
-		png_set_read_user_transform_fn(png,
-				premultiply_transform_fn);
+		png_set_read_user_transform_fn(png, premultiply_transform_fn);
 		break;
 	case PNG_COLOR_TYPE_RGB_ALPHA:
 		format = CAIRO_FORMAT_RGB24;
-		png_set_read_user_transform_fn(png,
-				convert_transform_fn);
+		png_set_read_user_transform_fn(png, convert_transform_fn);
 		break;
 	default:
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_CORRUPT_IMAGE,
@@ -241,7 +239,7 @@ load(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
 	cairo_status_t status = cairo_surface_status(surface);
 	if (G_UNLIKELY(CAIRO_STATUS_SUCCESS != status)) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_CAIRO,
-				cairo_status_to_string(status));
+				"png: %s", cairo_status_to_string(status));
 		goto error;
 	}
 	rows = g_try_new(guchar *, height);

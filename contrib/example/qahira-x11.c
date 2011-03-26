@@ -25,6 +25,21 @@
 #include <string.h>
 #include <X11/Xlib.h>
 
+static void
+surface_size(cairo_surface_t *surface, gint *width, gint *height)
+{
+	cairo_t *cr = cairo_create(surface);
+	gdouble clip_width, clip_height;
+	cairo_clip_extents(cr, NULL, NULL, &clip_width, &clip_height);
+	if (width) {
+		*width = (gint)clip_width;
+	}
+	if (height) {
+		*height = (gint)clip_height;
+	}
+	cairo_destroy(cr);
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -45,18 +60,13 @@ main(int argc, char *argv[])
 	if (!qr) {
 		goto error;
 	}
-	image = qahira_load_filename(qr, argv[1], NULL, &error);
+	image = qahira_load(qr, argv[1], &error);
 	if (!image) {
 		goto error;
 	}
 	gint width, height;
-	cairo_surface_type_t type = cairo_surface_get_type(image);
-	switch (type) {
-	case CAIRO_SURFACE_TYPE_IMAGE:
-		width = cairo_image_surface_get_width(image);
-		height = cairo_image_surface_get_height(image);
-		break;
-	default:
+	surface_size(image, &width, &height);
+	if (!width || !height) {
 		goto error;
 	}
 	display = XOpenDisplay(NULL);

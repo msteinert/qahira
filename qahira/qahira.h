@@ -74,13 +74,19 @@ qahira_new(void);
 
 G_GNUC_WARN_UNUSED_RESULT
 cairo_surface_t *
-qahira_load_file(Qahira *self, GFile *file, GCancellable *cancel,
+qahira_load(Qahira *self, const gchar *filename, GError **error);
+
+gboolean
+qahira_save(Qahira *self, cairo_surface_t *surface, const gchar *filename,
 		GError **error);
 
 G_GNUC_WARN_UNUSED_RESULT
 cairo_surface_t *
-qahira_load_filename(Qahira *self, const gchar *filename,
-		GCancellable *cancel, GError **error);
+qahira_load_file(Qahira *self, GFile *file, GError **error);
+
+gboolean
+qahira_save_file(Qahira *self, cairo_surface_t *surface,
+		GFile *file, GError **error);
 
 QahiraImage *
 qahira_get_image(Qahira *self, const gchar *mime);

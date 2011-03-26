@@ -50,7 +50,7 @@ test(GString **path, gconstpointer data)
 	file = g_string_new((*path)->str);
 	g_assert(file);
 	g_string_append(file, "sphinx.jpg");
-	surface = qahira_load_filename(qr, file->str, NULL, &error);
+	surface = qahira_load(qr, file->str, &error);
 	g_string_free(file, TRUE);
 	if (!surface) {
 		g_message("%s: %s", file->str, error->message);
@@ -63,7 +63,7 @@ test(GString **path, gconstpointer data)
 	file = g_string_new((*path)->str);
 	g_assert(file);
 	g_string_append(file, "sphinx.png");
-	surface = qahira_load_filename(qr, file->str, NULL, &error);
+	surface = qahira_load(qr, file->str, &error);
 	g_string_free(file, TRUE);
 	if (!surface) {
 		g_message("%s: %s", file->str, error->message);
@@ -76,7 +76,7 @@ test(GString **path, gconstpointer data)
 	file = g_string_new((*path)->str);
 	g_assert(file);
 	g_string_append(file, "sphinx.tga");
-	surface = qahira_load_filename(qr, file->str, NULL, &error);
+	surface = qahira_load(qr, file->str, &error);
 	g_string_free(file, TRUE);
 	if (!surface) {
 		g_message("%s: %s", file->str, error->message);
