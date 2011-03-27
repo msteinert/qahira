@@ -27,6 +27,18 @@
 
 G_BEGIN_DECLS
 
+#if G_BYTE_ORDER == G_LITTLE_ENDIAN
+#define QAHIRA_R (0)
+#define QAHIRA_G (1)
+#define QAHIRA_B (2)
+#define QAHIRA_A (3)
+#else
+#define QAHIRA_R (3)
+#define QAHIRA_G (2)
+#define QAHIRA_B (1)
+#define QAHIRA_A (0)
+#endif
+
 G_GNUC_INTERNAL
 void
 qahira_image_add_type(QahiraImage *self, const gchar *type);
@@ -51,6 +63,11 @@ qahira_image_surface_get_data(QahiraImage *self, cairo_surface_t *surface);
 G_GNUC_INTERNAL
 gint
 qahira_image_surface_get_stride(QahiraImage *self, cairo_surface_t *surface);
+
+G_GNUC_INTERNAL
+void
+qahira_image_surface_size(cairo_surface_t *surface, gint *width,
+		gint *height);
 
 G_END_DECLS
 

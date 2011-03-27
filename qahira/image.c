@@ -274,3 +274,18 @@ qahira_image_surface_get_stride(QahiraImage *self, cairo_surface_t *surface)
 			surface, &stride);
 	return stride;
 }
+
+void
+qahira_image_surface_size(cairo_surface_t *surface, gint *width, gint *height)
+{
+	cairo_t *cr = cairo_create(surface);
+	gdouble clip_width, clip_height;
+	cairo_clip_extents(cr, NULL, NULL, &clip_width, &clip_height);
+	cairo_destroy(cr);
+	if (width) {
+		*width = (gint)clip_width;
+	}
+	if (height) {
+		*height = (gint)clip_height;
+	}
+}

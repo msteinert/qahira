@@ -51,11 +51,15 @@ static guint signals[SIGNAL_LAST] = { 0 };
 
 struct Private {
 	struct jpeg_decompress_struct decompress;
+	struct jpeg_compress_struct compress;
 	struct jpeg_source_mgr source_mgr;
+	struct jpeg_destination_mgr destination_mgr;
 	struct jpeg_error_mgr error_mgr;
 	GInputStream *input;
+	GOutputStream *output;
 	GCancellable *cancel;
 	JOCTET *buffer;
+	gint quality;
 	gsize size;
 	guchar **lines;
 	gsize count;
@@ -107,9 +111,7 @@ init_source(j_decompress_ptr cinfo)
 }
 
 /**
- * \brief Fill the JPEG source buffer.
- *
- * For I/O suspended loading this function must return FALSE.
+ * \brief Fill the JPEG input buffer.
  */
 static gboolean
 fill_input_buffer(j_decompress_ptr cinfo)
@@ -117,21 +119,21 @@ fill_input_buffer(j_decompress_ptr cinfo)
 	struct Private *priv = cinfo->client_data;
 	if (G_UNLIKELY(!priv->buffer)) {
 		g_set_error(priv->error, QAHIRA_ERROR, QAHIRA_ERROR_NO_MEMORY,
-				Q_("input buffer is NULL"));
+				Q_("jpeg: input buffer is NULL"));
 		siglongjmp(priv->env, 1);
 	}
 	if (G_UNLIKELY(!priv->input)) {
 		goto eoi;
 	}
-	gssize n = g_input_stream_read(priv->input, priv->buffer,
+	gssize bytes = g_input_stream_read(priv->input, priv->buffer,
 			priv->size, priv->cancel, priv->error);
-	if (-1 == n) {
+	if (G_UNLIKELY(-1 == bytes)) {
 		siglongjmp(priv->env, 1);
 	}
-	if (0 == n) {
+	if (G_UNLIKELY(0 == bytes)) {
 		goto eoi;
 	}
-	cinfo->src->bytes_in_buffer = n;
+	cinfo->src->bytes_in_buffer = bytes;
 exit:
 	cinfo->src->next_input_byte = priv->buffer;
 	return TRUE;
@@ -167,16 +169,95 @@ term_source(j_decompress_ptr cinfo)
 	// do nothing
 }
 
+/**
+ * \brief JPEG destination initialization
+ */
+static void
+init_destination(j_compress_ptr cinfo)
+{
+	struct Private *priv = cinfo->client_data;
+	cinfo->dest->next_output_byte = priv->buffer;
+	cinfo->dest->free_in_buffer = QAHIRA_JPEG_BUFFER_SIZE;
+}
+
+/**
+ * \brief Empty the JPEG output buffer;
+ */
+static boolean
+empty_output_buffer(j_compress_ptr cinfo)
+{
+	struct Private *priv = cinfo->client_data;
+	if (G_UNLIKELY(!priv->buffer)) {
+		g_set_error(priv->error, QAHIRA_ERROR, QAHIRA_ERROR_NO_MEMORY,
+				Q_("jpeg: input buffer is NULL"));
+		siglongjmp(priv->env, 1);
+	}
+	if (G_UNLIKELY(!priv->output)) {
+		g_set_error(priv->error, QAHIRA_ERROR, QAHIRA_ERROR_FAILURE,
+				Q_("jpeg: output stream is NULL"));
+		siglongjmp(priv->env, 1);
+	}
+	gsize size = QAHIRA_JPEG_BUFFER_SIZE;
+	guchar *buffer = priv->buffer;
+	while (size) {
+		gssize bytes = g_output_stream_write(priv->output, buffer,
+				size, priv->cancel, priv->error);
+		if (G_UNLIKELY(-1 == bytes)) {
+			siglongjmp(priv->env, 1);
+		}
+		size -= bytes;
+		buffer += bytes;
+	}
+	cinfo->dest->next_output_byte = priv->buffer;
+	cinfo->dest->free_in_buffer = QAHIRA_JPEG_BUFFER_SIZE;
+	return TRUE;
+}
+
+/**
+ * \brief Flush data in JPEG output buffer.
+ */
+static void
+term_destination(j_compress_ptr cinfo)
+{
+	struct Private *priv = cinfo->client_data;
+	if (G_UNLIKELY(!priv->buffer)) {
+		g_set_error(priv->error, QAHIRA_ERROR, QAHIRA_ERROR_NO_MEMORY,
+				Q_("jpeg: input buffer is NULL"));
+		siglongjmp(priv->env, 1);
+	}
+	if (G_UNLIKELY(!priv->output)) {
+		g_set_error(priv->error, QAHIRA_ERROR, QAHIRA_ERROR_FAILURE,
+				Q_("jpeg: output stream is NULL"));
+		siglongjmp(priv->env, 1);
+	}
+	gsize size = QAHIRA_JPEG_BUFFER_SIZE - cinfo->dest->free_in_buffer;
+	guchar *buffer = priv->buffer;
+	while (size) {
+		gssize bytes = g_output_stream_write(priv->output, buffer,
+				size, priv->cancel, priv->error);
+		if (G_UNLIKELY(-1 == bytes)) {
+			siglongjmp(priv->env, 1);
+		}
+		size -= bytes;
+		buffer += bytes;
+	}
+	gboolean status = g_output_stream_flush(priv->output, priv->cancel,
+			priv->error);
+	if (!status) {
+		siglongjmp(priv->env, 1);
+	}
+}
+
 static void
 qahira_image_jpeg_init(QahiraImageJpeg *self)
 {
 	self->priv = ASSIGN_PRIVATE(self);
 	struct Private *priv = GET_PRIVATE(self);
 	// initialize error manager
-	priv->decompress.err = jpeg_std_error(&priv->error_mgr);
+	priv->decompress.err = priv->compress.err =
+		jpeg_std_error(&priv->error_mgr);
 	priv->error_mgr.error_exit = error_exit;
 	priv->error_mgr.output_message = output_message;
-	// initialize decompress
 	GError *error = NULL;
 	priv->error = &error;
 	if (sigsetjmp(priv->env, 1)) {
@@ -184,8 +265,13 @@ qahira_image_jpeg_init(QahiraImageJpeg *self)
 		g_error_free(error);
 		return;
 	}
+	// initialize decompress
 	jpeg_create_decompress(&priv->decompress);
-	priv->decompress.client_data = self->priv;
+	priv->decompress.client_data = priv;
+	// initialize compress
+	jpeg_create_compress(&priv->compress);
+	priv->compress.client_data = priv;
+	priv->quality = 75;
 	// initialize source manager
 	priv->decompress.src = &priv->source_mgr;
 	priv->source_mgr.init_source = init_source;
@@ -193,7 +279,12 @@ qahira_image_jpeg_init(QahiraImageJpeg *self)
 	priv->source_mgr.skip_input_data = skip_input_data;
 	priv->source_mgr.resync_to_restart = jpeg_resync_to_restart;
 	priv->source_mgr.term_source = term_source;
-	// create input buffer
+	// initialize destination manager
+	priv->compress.dest = &priv->destination_mgr;
+	priv->destination_mgr.init_destination = init_destination;
+	priv->destination_mgr.empty_output_buffer = empty_output_buffer;
+	priv->destination_mgr.term_destination = term_destination;
+	// initialize I/O buffer
 	priv->size = QAHIRA_JPEG_BUFFER_SIZE;
 	priv->buffer = g_try_malloc(priv->size);
 	if (G_UNLIKELY(!priv->buffer)) {
@@ -222,6 +313,7 @@ finalize(GObject *base)
 	struct Private *priv = GET_PRIVATE(base);
 	g_free(priv->buffer);
 	jpeg_destroy_decompress(&priv->decompress);
+	jpeg_destroy_compress(&priv->compress);
 	G_OBJECT_CLASS(qahira_image_jpeg_parent_class)->finalize(base);
 }
 
@@ -261,15 +353,9 @@ convert_grayscale(QahiraImage *self)
 		guchar *out = priv->data + priv->stride
 			* (i + priv->decompress.output_scanline - 1);
 		for (gint j = 0; j < priv->decompress.output_width; ++j) {
-#if G_BYTE_ORDER == G_LITTLE_ENDIAN
-			out[0] = in[0];
-			out[1] = in[0];
-			out[2] = in[0];
-#else
-			out[1] = in[0];
-			out[2] = in[0];
-			out[3] = in[0];
-#endif
+			out[QAHIRA_R] = in[0];
+			out[QAHIRA_G] = in[0];
+			out[QAHIRA_B] = in[0];
 			++in;
 			out += 4;
 		}
@@ -288,15 +374,9 @@ convert_rgb(QahiraImage *self)
 		guchar *out = priv->data + priv->stride
 			* (i + priv->decompress.output_scanline - 1);
 		for (gint j = 0; j < priv->decompress.output_width; ++j) {
-#if G_BYTE_ORDER == G_LITTLE_ENDIAN
-			out[0] = in[2];
-			out[1] = in[1];
-			out[2] = in[0];
-#else
-			out[1] = in[0];
-			out[2] = in[1];
-			out[3] = in[2];
-#endif
+			out[QAHIRA_R] = in[2];
+			out[QAHIRA_G] = in[1];
+			out[QAHIRA_B] = in[0];
 			in += 3;
 			out += 4;
 		}
@@ -315,35 +395,19 @@ convert_cmyk(QahiraImage *self)
 		guchar *out = priv->data + priv->stride
 			* (i + priv->decompress.output_scanline - 1);
 		for (gint j = 0; j < priv->decompress.output_width; ++j) {
-#if G_BYTE_ORDER == G_LITTLE_ENDIAN
 			guchar c = in[0];
 			guchar m = in[1];
 			guchar y = in[2];
 			guchar k = in[3];
 			if (priv->decompress.saw_Adobe_marker) {
-				out[2] = k * c / 255;
-				out[1] = k * m / 255;
-				out[0] = k * y / 255;
+				out[QAHIRA_R] = k * y / 255;
+				out[QAHIRA_G] = k * m / 255;
+				out[QAHIRA_B] = k * c / 255;
 			} else {
-				out[2] = (255 - k) * (255 - c) / 255;
-				out[1] = (255 - k) * (255 - m) / 255;
-				out[0] = (255 - k) * (255 - y) / 255;
+				out[QAHIRA_R] = (255 - k) * (255 - y) / 255;
+				out[QAHIRA_G] = (255 - k) * (255 - m) / 255;
+				out[QAHIRA_B] = (255 - k) * (255 - c) / 255;
 			}
-#else
-			guchar c = in[0];
-			guchar m = in[1];
-			guchar y = in[2];
-			guchar k = in[3];
-			if (priv->decompress.saw_Adobe_marker) {
-				out[3] = k * c / 255;
-				out[2] = k * m / 255;
-				out[1] = k * y / 255;
-			} else {
-				out[3] = (255 - k) * (255 - c) / 255;
-				out[2] = (255 - k) * (255 - m) / 255;
-				out[1] = (255 - k) * (255 - y) / 255;
-			}
-#endif
 			out += 4;
 			in += 4;
 		}
@@ -450,7 +514,7 @@ load(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
 	priv->data = qahira_image_surface_get_data(self, priv->surface);
 	if (G_UNLIKELY(!priv->data)) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_FAILURE,
-				Q_("jpeg: data is NULL"));
+				Q_("jpeg: surface data is NULL"));
 		goto error;
 	}
 	priv->stride = qahira_image_surface_get_stride(self, priv->surface);
@@ -484,6 +548,7 @@ load(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
 			goto error;
 		}
 	}
+	jpeg_finish_decompress(&priv->decompress);
 exit:
 	if (priv->input) {
 		g_object_unref(priv->input);
@@ -504,6 +569,121 @@ error:
 	goto exit;
 }
 
+static gboolean
+save(QahiraImage *self, cairo_surface_t *surface, GOutputStream *stream,
+		GCancellable *cancel, GError **error)
+{
+	struct Private *priv = GET_PRIVATE(self);
+	cairo_content_t content = cairo_surface_get_content(surface);
+	gboolean status = TRUE;
+	guchar *buffer = NULL;
+	gint width, height;
+	qahira_image_surface_size(surface, &width, &height);
+	if (!width || !height) {
+		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_FAILURE,
+				Q_("jpeg: invalid dimensions: [%d x %d]"),
+				width, height);
+		goto error;
+	}
+	priv->error = error;
+	if (sigsetjmp(priv->env, 1)) {
+		goto error;
+	}
+	priv->output = g_object_ref(stream);
+	if (cancel) {
+		priv->cancel = g_object_ref(cancel);
+	}
+	guchar *data = qahira_image_surface_get_data(self, surface);
+	if (G_UNLIKELY(!data)) {
+		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_FAILURE,
+				Q_("jpeg: surface data is NULL"));
+		goto error;
+	}
+	gint stride = 0;
+	gint components;
+	gint color_space;
+	switch (content) {
+	case CAIRO_CONTENT_COLOR:
+	case CAIRO_CONTENT_COLOR_ALPHA:
+		components = 3;
+		color_space = JCS_RGB;
+		buffer = g_try_malloc(components * width);
+		if (!buffer) {
+			g_set_error(error, QAHIRA_ERROR,
+					QAHIRA_ERROR_NO_MEMORY,
+					Q_("jpeg: out of memory"));
+			goto error;
+		}
+		break;
+	case CAIRO_CONTENT_ALPHA:
+		components = 1;
+		color_space = JCS_GRAYSCALE;
+		stride = qahira_image_surface_get_stride(self, surface);
+		if (0 > stride) {
+			g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_FAILURE,
+					Q_("jpeg: invalid stride"));
+			goto error;
+		}
+		break;
+	default:
+		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_UNSUPPORTED,
+				Q_("jpeg: unsupported surface content"));
+		goto error;
+	}
+	jpeg_abort_compress(&priv->compress);
+	priv->compress.image_width = width;
+	priv->compress.image_height = height;
+	priv->compress.input_components = components;
+	priv->compress.in_color_space = color_space;
+	jpeg_set_defaults(&priv->compress);
+	jpeg_set_quality(&priv->compress, priv->quality, TRUE);
+	jpeg_start_compress(&priv->compress, TRUE);
+	gint i = 0;
+	while (priv->compress.next_scanline < priv->compress.image_height) {
+		switch (content) {
+		case CAIRO_CONTENT_COLOR:
+		case CAIRO_CONTENT_COLOR_ALPHA:
+			for (gint j = 0; j < width; ++j) {
+				buffer[3 * j + 0] = data[QAHIRA_R];
+				buffer[3 * j + 1] = data[QAHIRA_G];
+				buffer[3 * j + 2] = data[QAHIRA_B];
+				data += 4;
+			}
+			break;
+		case CAIRO_CONTENT_ALPHA:
+			buffer = data + i * stride;
+			break;
+		default:
+			g_assert_not_reached();
+		}
+		jpeg_write_scanlines(&priv->compress, &buffer, 1);
+		++i;
+	}
+	jpeg_finish_compress(&priv->compress);
+exit:
+	switch (content) {
+	case CAIRO_CONTENT_COLOR:
+	case CAIRO_CONTENT_COLOR_ALPHA:
+		g_free(buffer);
+		break;
+	case CAIRO_CONTENT_ALPHA:
+	default:
+		break;
+	}
+	if (priv->output) {
+		g_object_unref(priv->output);
+		priv->output = NULL;
+	}
+	if (priv->cancel) {
+		g_object_unref(priv->cancel);
+		priv->cancel = NULL;
+	}
+	return status;
+error:
+	status = FALSE;
+	goto exit;
+}
+
 static void
 qahira_image_jpeg_class_init(QahiraImageJpegClass *klass)
 {
@@ -512,6 +692,7 @@ qahira_image_jpeg_class_init(QahiraImageJpegClass *klass)
 	object_class->finalize = finalize;
 	QahiraImageClass *image_class = QAHIRA_IMAGE_CLASS(klass);
 	image_class->load = load;
+	image_class->save = save;
 	g_type_class_add_private(klass, sizeof(struct Private));
 	// QahiraImageJpeg::progressive
 	signals[SIGNAL_PROGRESSIVE] =
@@ -528,4 +709,18 @@ qahira_image_jpeg_new(void)
 	return g_object_new(QAHIRA_TYPE_IMAGE_JPEG,
 			"mime-type", "image/jpeg",
 			NULL);
+}
+
+void
+qahira_image_jpeg_set_quality(QahiraImage *self, gint quality)
+{
+	g_return_if_fail(QAHIRA_IS_IMAGE_JPEG(self));
+	GET_PRIVATE(self)->quality = CLAMP(quality, 0, 100);
+}
+
+gint
+qahira_image_jpeg_get_quality(QahiraImage *self)
+{
+	g_return_val_if_fail(QAHIRA_IS_IMAGE_JPEG(self), 0);
+	return GET_PRIVATE(self)->quality;
 }

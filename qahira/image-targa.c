@@ -282,12 +282,8 @@ read_image_id(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
 				Q_("targa: out of memory"));
 		return FALSE;
 	}
-	status = tga_read(self, stream, cancel, priv->id,
-			priv->header.id_len, error);
-	if (!status) {
-		return FALSE;
-	}
-	return TRUE;
+	return tga_read(self, stream, cancel, priv->id, priv->header.id_len,
+			error);
 }
 
 static gboolean
@@ -310,60 +306,48 @@ read_colormap(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
 				Q_("targa: out of memory"));
 		return FALSE;
 	}
-	status = tga_read(self, stream, cancel, priv->colormap, size, error);
-	if (!status) {
-		return FALSE;
-	}
-	return TRUE;
+	return tga_read(self, stream, cancel, priv->colormap, size, error);
 }
 
 static inline void
 convert_rgb(QahiraImage *self, const guchar *in, guchar *out)
 {
 	struct Private *priv = GET_PRIVATE(self);
-#if G_BYTE_ORDER == G_LITTLE_ENDIAN
-#define R (0)
-#define G (1)
-#define B (2)
-#define A (3)
-#else
-#define R (3)
-#define G (2)
-#define B (1)
-#define A (0)
-#endif
 	for (gint i = 0; i < priv->header.width; ++i) {
 		switch (priv->header.depth) {
 		case 15:
 			{
 				gushort pixel = (in[0] << 8) | in[1];
-				out[R] = (pixel >> 10) & 0x1f;
-				out[G] = (pixel >> 5) & 0x1f;
-				out[B] = pixel & 0x1f;
-				out[A] = ((pixel >> 15) & 0x1 * 255);
+				out[QAHIRA_R] = (pixel >> 10) & 0x1f;
+				out[QAHIRA_G] = (pixel >> 5) & 0x1f;
+				out[QAHIRA_B] = pixel & 0x1f;
+				if (priv->header.alpha) {
+					out[QAHIRA_A] =
+						(pixel >> 15) & 0x1 ? 1 : 0;
+				}
 			}
 			in += 2;
 			break;
 		case 16:
 			{
 				gushort pixel = (in[0] << 8) | in[1];
-				out[R] = (pixel >> 11) & 0x1f;
-				out[G] = (pixel >> 5) & 0x3f;
-				out[B] = pixel & 0x1f;
+				out[QAHIRA_R] = (pixel >> 11) & 0x1f;
+				out[QAHIRA_G] = (pixel >> 5) & 0x3f;
+				out[QAHIRA_B] = pixel & 0x1f;
 			}
 			in += 2;
 			break;
 		case 24:
-			out[R] = in[0];
-			out[G] = in[1];
-			out[B] = in[2];
+			out[QAHIRA_R] = in[0];
+			out[QAHIRA_G] = in[1];
+			out[QAHIRA_B] = in[2];
 			in += 3;
 			break;
 		case 32:
-			out[R] = in[0];
-			out[G] = in[1];
-			out[B] = in[2];
-			out[A] = in[3];
+			out[QAHIRA_R] = in[0];
+			out[QAHIRA_G] = in[1];
+			out[QAHIRA_B] = in[2];
+			out[QAHIRA_A] = in[3];
 			in += 4;
 			break;
 		default:
@@ -371,10 +355,6 @@ convert_rgb(QahiraImage *self, const guchar *in, guchar *out)
 		}
 		out += 4;
 	}
-#undef R
-#undef G
-#undef B
-#undef A
 }
 
 static cairo_surface_t *
@@ -396,6 +376,9 @@ read_scanlines(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
 		format = CAIRO_FORMAT_RGB24;
 		break;
 	case 15:
+		format = priv->header.alpha ? CAIRO_FORMAT_ARGB32
+			: CAIRO_FORMAT_RGB24;
+		break;
 	case 32:
 		format = CAIRO_FORMAT_ARGB32;
 		break;

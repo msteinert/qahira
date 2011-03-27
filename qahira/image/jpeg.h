@@ -71,6 +71,12 @@ G_GNUC_WARN_UNUSED_RESULT
 QahiraImage *
 qahira_image_jpeg_new(void);
 
+void
+qahira_image_jpeg_set_quality(QahiraImage *self, gint quality);
+
+gint
+qahira_image_jpeg_get_quality(QahiraImage *self);
+
 G_END_DECLS
 
 #endif // QAHIRA_IMAGE_JPEG_H

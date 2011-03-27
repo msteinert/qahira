@@ -258,7 +258,7 @@ load(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
 	guchar *data = qahira_image_surface_get_data(self, surface);
 	if (G_UNLIKELY(!data)) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_FAILURE,
-				Q_("png: data is NULL"));
+				Q_("png: surface data is NULL"));
 		goto error;
 	}
 	gint stride = qahira_image_surface_get_stride(self, surface);
@@ -328,21 +328,6 @@ output_flush_fn(png_structp png)
 	}
 }
 
-static inline void
-surface_size(cairo_surface_t *surface, gint *width, gint *height)
-{
-	cairo_t *cr = cairo_create(surface);
-	gdouble clip_width, clip_height;
-	cairo_clip_extents(cr, NULL, NULL, &clip_width, &clip_height);
-	cairo_destroy(cr);
-	if (width) {
-		*width = (gint)clip_width;
-	}
-	if (height) {
-		*height = (gint)clip_height;
-	}
-}
-
 static void
 data_to_bytes_transform_fn(png_structp png, png_row_infop row, png_bytep data)
 {
@@ -386,14 +371,17 @@ save(QahiraImage *self, cairo_surface_t *surface, GOutputStream *stream,
 {
 	struct Private *priv = GET_PRIVATE(self);
 	priv->input = g_object_ref(stream);
-	gboolean status = FALSE;
+	gboolean status = TRUE;
 	png_structp png = NULL;
 	png_infop info = NULL;
 	png_byte **rows = NULL;
 	gint width, height;
-	surface_size(surface, &width, &height);
+	qahira_image_surface_size(surface, &width, &height);
 	if (!width || !height) {
-		goto exit;
+		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_FAILURE,
+				Q_("png: invalid dimensions: [%d x %d]"),
+				width, height);
+		goto error;
 	}
 #ifdef PNG_USER_MEM_SUPPORTED
 	png = png_create_write_struct_2(PNG_LIBPNG_VER_STRING, priv,
@@ -430,7 +418,7 @@ save(QahiraImage *self, cairo_surface_t *surface, GOutputStream *stream,
 	guchar *data = qahira_image_surface_get_data(self, surface);
 	if (G_UNLIKELY(!data)) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_FAILURE,
-				Q_("png: data is NULL"));
+				Q_("png: surface data is NULL"));
 		goto error;
 	}
 	gint stride = qahira_image_surface_get_stride(self, surface);

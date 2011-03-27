@@ -59,9 +59,6 @@ PKG_CHECK_MODULES([GOBJECT], [$qahira_gobject_version])
 qahira_gio_version="gio-2.0 >= $qahira_glib_minimum_version"
 AC_SUBST([qahira_gio_version])
 PKG_CHECK_MODULES([GIO], [$qahira_gio_version])
-qahira_gio_unix_version="gio-unix-2.0 >= $qahira_glib_minimum_version"
-AC_SUBST([qahira_gio_unix_version])
-PKG_CHECK_MODULES([GIO_UNIX], [$qahira_gio_unix_version])
 qahira_cairo_version="cairo >= 1.10"
 AC_SUBST([qahira_cairo_version])
 PKG_CHECK_MODULES([CAIRO], [$qahira_cairo_version])

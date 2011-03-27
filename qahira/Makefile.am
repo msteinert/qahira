@@ -27,14 +27,12 @@ libqahira_@qahira_series_major@_@qahira_series_minor@_la_CFLAGS = \
 	$(GLIB_CFLAGS) \
 	$(GOBJECT_CFLAGS) \
 	$(GIO_CFLAGS) \
-	$(GIO_UNIX_CFLAGS) \
 	$(CAIRO_CFLAGS)
 libqahira_@qahira_series_major@_@qahira_series_minor@_la_LDFLAGS = \
 	-version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE) \
 	$(GLIB_LIBS) \
 	$(GOBJECT_LIBS) \
 	$(GIO_LIBS) \
-	$(GIO_UNIX_LIBS) \
 	$(CAIRO_LIBS)
 # install development headers
 pkgincludedir = $(includedir)/qahira-$(qahira_series)/qahira
