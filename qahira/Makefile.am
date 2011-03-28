@@ -14,6 +14,7 @@ libqahira_@qahira_series_major@_@qahira_series_minor@_la_SOURCES = \
 	error.c \
 	image.c \
 	image/private.h \
+	image-serial.c \
 	macros.h \
 	marshal.c \
 	marshal.h \
@@ -43,7 +44,8 @@ pkginclude_HEADERS = \
 	qahira.h
 # Image Formats
 imageincludedir = $(pkgincludedir)/image
-imageinclude_HEADERS =
+imageinclude_HEADERS = \
+	image/serial.h
 if QAHIRA_HAS_JPEG
 libqahira_@qahira_series_major@_@qahira_series_minor@_la_SOURCES += \
 	image-jpeg.c

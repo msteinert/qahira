@@ -92,7 +92,7 @@ tga_read(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
 		if (G_UNLIKELY(size && !bytes)) {
 			g_set_error(error, QAHIRA_ERROR,
 					QAHIRA_ERROR_CORRUPT_IMAGE,
-					Q_("truncated image"));
+					Q_("targa: truncated image"));
 			return FALSE;
 		}
 		priv->position += bytes;
@@ -482,8 +482,8 @@ tga_write(QahiraImage *self, GOutputStream *stream, GCancellable *cancel,
 {
 	struct Private *priv = GET_PRIVATE(self);
 	while (size) {
-		gssize bytes = g_output_stream_write(stream, buffer,
-				size, cancel, error);
+		gssize bytes = g_output_stream_write(stream, buffer, size,
+				cancel, error);
 		if (G_UNLIKELY(-1 == bytes)) {
 			return FALSE;
 		}
