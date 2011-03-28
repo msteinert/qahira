@@ -208,3 +208,15 @@ qahira_image_serial_new(void)
 			"mime-type", "application/octet-stream",
 			NULL);
 }
+
+gsize
+qahira_image_serial_get_size(QahiraImage *self, cairo_surface_t *surface)
+{
+	gint stride = qahira_image_surface_get_stride(self, surface);
+	if (G_UNLIKELY(0 > stride)) {
+		return 0;
+	}
+	gint height;
+	qahira_image_surface_size(surface, NULL, &height);
+	return sizeof(GET_PRIVATE(self)->header) + stride * height;
+}

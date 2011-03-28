@@ -66,6 +66,9 @@ G_GNUC_WARN_UNUSED_RESULT
 QahiraImage *
 qahira_image_serial_new(void);
 
+gsize
+qahira_image_serial_get_size(QahiraImage *self, cairo_surface_t *surface);
+
 G_END_DECLS
 
 #endif // QAHIRA_IMAGE_SERIAL_H
