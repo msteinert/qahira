@@ -47,8 +47,8 @@ qahira_image_png_init(QahiraImagePng *self)
 {
 	self->priv = ASSIGN_PRIVATE(self);
 	struct Private *priv = GET_PRIVATE(self);
-	priv->compression = 6;
 	priv->interlace = FALSE;
+	priv->compression = 6;
 }
 
 static void
@@ -66,7 +66,7 @@ error_fn(png_structp png, png_const_charp message)
 	}
 #ifdef PNG_SETJMP_SUPPORTED
 	longjmp(png_jmpbuf(png), 1);
-#endif
+#endif // PNG_USER_MEM_SUPPORTED
 }
 
 static void
@@ -75,6 +75,7 @@ warn_fn(png_structp png, png_const_charp message)
 	// do nothing
 }
 
+#ifdef PNG_USER_MEM_SUPPORTED
 static png_voidp
 malloc_fn(png_structp png, png_size_t size)
 {
@@ -86,6 +87,7 @@ free_fn(png_structp png, png_voidp ptr)
 {
 	g_free(ptr);
 }
+#endif // PNG_USER_MEM_SUPPORTED
 
 static void
 read_data_fn(png_structp png, png_bytep buffer, png_size_t size)
@@ -163,10 +165,10 @@ load(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
 #ifdef PNG_USER_MEM_SUPPORTED
 	png = png_create_read_struct_2(PNG_LIBPNG_VER_STRING,
 			priv, error_fn, warn_fn, NULL, malloc_fn, free_fn);
-#else
+#else // PNG_USER_MEM_SUPPORTED
 	png = png_create_read_struct(PNG_LIBPNG_VER_STRING,
 			priv, error_fn, warn_fn);
-#endif
+#endif // PNG_USER_MEM_SUPPORTED
 	if (G_UNLIKELY(!png)) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_NO_MEMORY,
 				Q_("png: out of memory"));
@@ -188,7 +190,7 @@ load(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
 	if (setjmp(png_jmpbuf(png))) {
 		goto error;
 	}
-#endif
+#endif // PNG_SETJMP_SUPPORTED
 	png_uint_32 width, height;
 	int depth, color, interlace;
 	png_read_info(png, info);
@@ -199,9 +201,9 @@ load(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
 	} else if (PNG_COLOR_TYPE_GRAY == color) {
 #if PNG_LIBPNG_VER >= 10209
 		png_set_expand_gray_1_2_4_to_8(png);
-#else
+#else // PNG_LIBPNG_VER
 		png_set_gray_1_2_4_to_8(png);
-#endif
+#endif // PNG_LIBPNG_VER
 		png_set_gray_to_rgb(png);
 	} else if (PNG_COLOR_TYPE_GRAY_ALPHA) {
 		png_set_gray_to_rgb(png);
@@ -283,7 +285,6 @@ exit:
 	g_free(rows);
 	if (png) {
 		png_destroy_read_struct(&png, &info, NULL);
-		png = NULL;
 	}
 	if (priv->input) {
 		g_object_unref(priv->input);
@@ -351,17 +352,13 @@ unpremultiply_transform_fn(png_structp png, png_row_infop row, png_bytep data)
 		guchar alpha;
 		memcpy (&pixel, out, sizeof(pixel));
 		alpha = (pixel & 0xff000000) >> 24;
-		if (alpha == 0) {
-			out[0] = out[1] = out[2] = out[3] = 0;
-		} else {
-			out[0] = (((pixel & 0xff0000) >> 16)
-					* 255 + alpha / 2) / alpha;
-			out[1] = (((pixel & 0x00ff00) >>  8)
-					* 255 + alpha / 2) / alpha;
-			out[2] = (((pixel & 0x0000ff) >>  0)
-					* 255 + alpha / 2) / alpha;
-			out[3] = alpha;
-		}
+		out[0] = (((pixel & 0xff0000) >> 16)
+				* 255 + alpha / 2) / alpha;
+		out[1] = (((pixel & 0x00ff00) >>  8)
+				* 255 + alpha / 2) / alpha;
+		out[2] = (((pixel & 0x0000ff) >>  0)
+				* 255 + alpha / 2) / alpha;
+		out[3] = alpha;
 	}
 }
 
@@ -386,10 +383,10 @@ save(QahiraImage *self, cairo_surface_t *surface, GOutputStream *stream,
 #ifdef PNG_USER_MEM_SUPPORTED
 	png = png_create_write_struct_2(PNG_LIBPNG_VER_STRING, priv,
 			error_fn, warn_fn, NULL, malloc_fn, free_fn);
-#else
+#else // PNG_USER_MEM_SUPPORTED
 	png = png_create_write_struct(PNG_LIBPNG_VER_STRING, priv,
 			error_fn, warn_fn);
-#endif
+#endif // PNG_USER_MEM_SUPPORTED
 	if (G_UNLIKELY(!png)) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_NO_MEMORY,
 				Q_("png: out of memory"));
@@ -402,9 +399,6 @@ save(QahiraImage *self, cairo_surface_t *surface, GOutputStream *stream,
 		goto error;
 	}
 	png_set_write_fn(png, priv, write_data_fn, output_flush_fn);
-	if (cancel) {
-		priv->cancel = g_object_ref(cancel);
-	}
 	priv->output = g_object_ref(stream);
 	if (cancel) {
 		priv->cancel = g_object_ref(cancel);
@@ -414,7 +408,7 @@ save(QahiraImage *self, cairo_surface_t *surface, GOutputStream *stream,
 	if (setjmp(png_jmpbuf(png))) {
 		goto error;
 	}
-#endif
+#endif // PNG_SETJMP_SUPPORTED
 	guchar *data = qahira_image_surface_get_data(self, surface);
 	if (G_UNLIKELY(!data)) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_FAILURE,
@@ -433,7 +427,7 @@ save(QahiraImage *self, cairo_surface_t *surface, GOutputStream *stream,
 		goto error;
 	}
 	for (gint i = 0; i < height; ++i) {
-		rows[i] = &data[i * stride];
+		rows[i] = data + i * stride;
 	}
 	gint depth, color;
 	cairo_content_t content = cairo_surface_get_content(surface);
@@ -441,18 +435,13 @@ save(QahiraImage *self, cairo_surface_t *surface, GOutputStream *stream,
 	case CAIRO_CONTENT_COLOR:
 		depth = 8;
 		color = PNG_COLOR_TYPE_RGB;
-		png_set_filler(png, 0, PNG_FILLER_AFTER);
-		png_set_write_user_transform_fn(png,
-				data_to_bytes_transform_fn);
 		break;
 	case CAIRO_CONTENT_COLOR_ALPHA:
 		depth = 8;
 		color = PNG_COLOR_TYPE_RGB_ALPHA;
-		png_set_write_user_transform_fn(png,
-				unpremultiply_transform_fn);
 #if G_BYTE_ORDER == G_LITTLE_ENDIAN
 		png_set_packswap(png);
-#endif
+#endif // G_BYTE_ORDER
 		break;
 	case CAIRO_CONTENT_ALPHA:
 		depth = 1;
@@ -461,21 +450,33 @@ save(QahiraImage *self, cairo_surface_t *surface, GOutputStream *stream,
 	default:
 		g_assert_not_reached();
 	}
+	png_set_compression_level(png, priv->compression);
 	png_set_IHDR(png, info, width, height, depth, color,
 			priv->interlace
 				? PNG_INTERLACE_ADAM7
 				: PNG_INTERLACE_NONE,
 			PNG_COMPRESSION_TYPE_DEFAULT,
 			PNG_FILTER_TYPE_DEFAULT);
-	png_set_compression_level(png, priv->compression);
 	png_write_info(png, info);
+	switch (color) {
+	case PNG_COLOR_TYPE_RGB:
+		png_set_filler(png, 0, PNG_FILLER_AFTER);
+		png_set_write_user_transform_fn(png,
+				data_to_bytes_transform_fn);
+		break;
+	case PNG_COLOR_TYPE_RGB_ALPHA:
+		png_set_write_user_transform_fn(png,
+				unpremultiply_transform_fn);
+		break;
+	default:
+		break;
+	}
 	png_write_image(png, rows);
 	png_write_end(png, info);
 exit:
 	g_free(rows);
 	if (png) {
 		png_destroy_write_struct(&png, &info);
-		png = NULL;
 	}
 	if (priv->output) {
 		g_object_unref(priv->output);

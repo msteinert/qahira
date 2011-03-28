@@ -639,9 +639,9 @@ save(QahiraImage *self, cairo_surface_t *surface, GOutputStream *stream,
 		case CAIRO_CONTENT_COLOR:
 		case CAIRO_CONTENT_COLOR_ALPHA:
 			for (gint j = 0; j < width; ++j) {
-				buffer[3 * j + 0] = data[QAHIRA_R];
+				buffer[3 * j + 2] = data[QAHIRA_R];
 				buffer[3 * j + 1] = data[QAHIRA_G];
-				buffer[3 * j + 2] = data[QAHIRA_B];
+				buffer[3 * j + 0] = data[QAHIRA_B];
 				data += 4;
 			}
 			break;
