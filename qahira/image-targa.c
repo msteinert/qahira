@@ -325,19 +325,19 @@ convert_rgb(QahiraImage *self, const guchar *in, guchar *out)
 			break;
 		case 15:
 			pixel = (in[0] << 8) | in[1];
-			out[QAHIRA_R] = (pixel >> 10) & 0x1f;
-			out[QAHIRA_G] = (pixel >> 5) & 0x1f;
-			out[QAHIRA_B] = pixel & 0x1f;
+			out[QAHIRA_R] = ((pixel >> 10) & 0x1f) / 0x1f * 255;
+			out[QAHIRA_G] = ((pixel >> 5) & 0x1f) / 0x1f * 255;
+			out[QAHIRA_B] = (pixel & 0x1f) / 0x1f * 255;
 			if (priv->header.alpha) {
-				out[QAHIRA_A] = (pixel >> 15) & 0x1 ? 1 : 0;
+				out[QAHIRA_A] = (pixel >> 15) & 0x1 ? 255 : 0;
 			}
 			in += 2;
 			break;
 		case 16:
 			pixel = (in[0] << 8) | in[1];
-			out[QAHIRA_R] = (pixel >> 11) & 0x1f;
-			out[QAHIRA_G] = (pixel >> 5) & 0x3f;
-			out[QAHIRA_B] = pixel & 0x1f;
+			out[QAHIRA_R] = ((pixel >> 11) & 0x1f) / 0x1f * 255;
+			out[QAHIRA_G] = ((pixel >> 5) & 0x3f) / 0x3f * 255;
+			out[QAHIRA_B] = (pixel & 0x1f) / 0x1f * 255;
 			in += 2;
 			break;
 		case 24:

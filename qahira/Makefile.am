@@ -43,11 +43,11 @@ pkginclude_HEADERS = \
 	qahira.h
 # Image Formats
 imageincludedir = $(pkgincludedir)/image
-imageinclude_FILES =
+imageinclude_HEADERS =
 if QAHIRA_HAS_JPEG
 libqahira_@qahira_series_major@_@qahira_series_minor@_la_SOURCES += \
 	image-jpeg.c
-imageinclude_FILES += image/jpeg.h
+imageinclude_HEADERS += image/jpeg.h
 endif
 if QAHIRA_HAS_PNG
 libqahira_@qahira_series_major@_@qahira_series_minor@_la_CFLAGS += \
@@ -56,12 +56,12 @@ libqahira_@qahira_series_major@_@qahira_series_minor@_la_LDFLAGS += \
 	$(PNG_LIBS)
 libqahira_@qahira_series_major@_@qahira_series_minor@_la_SOURCES += \
 	image-png.c
-imageinclude_FILES += image/png.h
+imageinclude_HEADERS += image/png.h
 endif
 if QAHIRA_HAS_TARGA
 libqahira_@qahira_series_major@_@qahira_series_minor@_la_SOURCES += \
 	image-targa.c
-imageinclude_FILES += image/targa.h
+imageinclude_HEADERS += image/targa.h
 endif
 EXTRA_DIST = \
 	marshal.list
