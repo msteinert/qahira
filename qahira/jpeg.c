@@ -22,8 +22,8 @@
 #include "config.h"
 #endif
 #include "qahira/error.h"
-#include "qahira/image/jpeg.h"
-#include "qahira/image/private.h"
+#include "qahira/format/jpeg.h"
+#include "qahira/format/private.h"
 #include "qahira/marshal.h"
 #include <stdio.h>
 #include <string.h>
@@ -31,14 +31,14 @@
 #include <jpeglib.h>
 #include <jerror.h>
 
-G_DEFINE_TYPE(QahiraImageJpeg, qahira_image_jpeg, QAHIRA_TYPE_IMAGE)
+G_DEFINE_TYPE(QahiraFormatJpeg, qahira_format_jpeg, QAHIRA_TYPE_FORMAT)
 
 #define ASSIGN_PRIVATE(instance) \
-	(G_TYPE_INSTANCE_GET_PRIVATE(instance, QAHIRA_TYPE_IMAGE_JPEG, \
+	(G_TYPE_INSTANCE_GET_PRIVATE(instance, QAHIRA_TYPE_FORMAT_JPEG, \
 		struct Private))
 
 #define GET_PRIVATE(instance) \
-	((struct Private *)((QahiraImageJpeg *)instance)->priv)
+	((struct Private *)((QahiraFormatJpeg *)instance)->priv)
 
 enum Signals {
 	SIGNAL_PROGRESSIVE,
@@ -244,7 +244,7 @@ term_destination(j_compress_ptr cinfo)
 }
 
 static void
-qahira_image_jpeg_init(QahiraImageJpeg *self)
+qahira_format_jpeg_init(QahiraFormatJpeg *self)
 {
 	self->priv = ASSIGN_PRIVATE(self);
 	struct Private *priv = GET_PRIVATE(self);
@@ -299,7 +299,7 @@ dispose(GObject *base)
 		g_object_unref(priv->input);
 		priv->input = NULL;
 	}
-	G_OBJECT_CLASS(qahira_image_jpeg_parent_class)->dispose(base);
+	G_OBJECT_CLASS(qahira_format_jpeg_parent_class)->dispose(base);
 }
 
 static void
@@ -309,7 +309,7 @@ finalize(GObject *base)
 	g_free(priv->buffer);
 	jpeg_destroy_decompress(&priv->decompress);
 	jpeg_destroy_compress(&priv->compress);
-	G_OBJECT_CLASS(qahira_image_jpeg_parent_class)->finalize(base);
+	G_OBJECT_CLASS(qahira_format_jpeg_parent_class)->finalize(base);
 }
 
 /**
@@ -340,7 +340,7 @@ colorspace_name(J_COLOR_SPACE colorspace)
  * \brief Convert JPEG grayscale to RGB.
  */
 static inline void
-convert_grayscale(QahiraImage *self)
+convert_grayscale(QahiraFormat *self)
 {
 	struct Private *priv = GET_PRIVATE(self);
 	for (gint i = 0; i < priv->decompress.rec_outbuf_height; ++i) {
@@ -361,7 +361,7 @@ convert_grayscale(QahiraImage *self)
  * \brief Convert RGB
  */
 static inline void
-convert_rgb(QahiraImage *self)
+convert_rgb(QahiraFormat *self)
 {
 	struct Private *priv = GET_PRIVATE(self);
 	for (gint i = 0; i < priv->decompress.rec_outbuf_height; ++i) {
@@ -382,7 +382,7 @@ convert_rgb(QahiraImage *self)
  * \brief Convert JPEG CMYK to RGB.
  */
 static inline void
-convert_cmyk(QahiraImage *self)
+convert_cmyk(QahiraFormat *self)
 {
 	struct Private *priv = GET_PRIVATE(self);
 	for (gint i = 0; i < priv->decompress.rec_outbuf_height; ++i) {
@@ -413,7 +413,7 @@ convert_cmyk(QahiraImage *self)
  * \brief Load JPEG scan lines.
  */
 static inline gboolean
-load_lines(QahiraImage *self, GError **error)
+load_lines(QahiraFormat *self, GError **error)
 {
 	struct Private *priv = GET_PRIVATE(self);
 	while (priv->decompress.output_scanline
@@ -448,7 +448,7 @@ load_lines(QahiraImage *self, GError **error)
  * \brief Progressively load JPEG scan lines.
  */
 static inline gboolean
-load_progressive(QahiraImage *self, GError **error)
+load_progressive(QahiraFormat *self, GError **error)
 {
 	struct Private *priv = GET_PRIVATE(self);
 	gboolean in_output = FALSE;
@@ -476,7 +476,7 @@ load_progressive(QahiraImage *self, GError **error)
 }
 
 static cairo_surface_t *
-load(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
+load(QahiraFormat *self, GInputStream *stream, GCancellable *cancel,
 		GError **error)
 {
 	struct Private *priv = GET_PRIVATE(self);
@@ -492,7 +492,7 @@ load(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
 	jpeg_save_markers(&priv->decompress, JPEG_APP0 + 1, 0xffff);
 	jpeg_read_header(&priv->decompress, TRUE);
 	jpeg_start_decompress(&priv->decompress);
-	priv->surface = qahira_image_surface_create(self, CAIRO_FORMAT_RGB24,
+	priv->surface = qahira_format_surface_create(self, CAIRO_FORMAT_RGB24,
 			priv->decompress.output_width,
 			priv->decompress.output_height);
 	if (!priv->surface) {
@@ -506,13 +506,13 @@ load(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
 				"jpeg: %s", cairo_status_to_string(err));
 		goto error;
 	}
-	priv->data = qahira_image_surface_get_data(self, priv->surface);
+	priv->data = qahira_format_surface_get_data(self, priv->surface);
 	if (G_UNLIKELY(!priv->data)) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_FAILURE,
 				Q_("jpeg: surface data is NULL"));
 		goto error;
 	}
-	priv->stride = qahira_image_surface_get_stride(self, priv->surface);
+	priv->stride = qahira_format_surface_get_stride(self, priv->surface);
 	if (G_UNLIKELY(0 > priv->stride)) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_FAILURE,
 				Q_("jpeg: invalid stride"));
@@ -567,7 +567,7 @@ error:
 }
 
 static gboolean
-save(QahiraImage *self, cairo_surface_t *surface, GOutputStream *stream,
+save(QahiraFormat *self, cairo_surface_t *surface, GOutputStream *stream,
 		GCancellable *cancel, GError **error)
 {
 	struct Private *priv = GET_PRIVATE(self);
@@ -575,7 +575,7 @@ save(QahiraImage *self, cairo_surface_t *surface, GOutputStream *stream,
 	gboolean status = TRUE;
 	guchar *buffer = NULL;
 	gint width, height;
-	qahira_image_surface_size(surface, &width, &height);
+	qahira_format_surface_size(surface, &width, &height);
 	if (!width || !height) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_FAILURE,
 				Q_("jpeg: invalid dimensions [%d x %d]"),
@@ -590,7 +590,7 @@ save(QahiraImage *self, cairo_surface_t *surface, GOutputStream *stream,
 	if (cancel) {
 		priv->cancel = g_object_ref(cancel);
 	}
-	guchar *data = qahira_image_surface_get_data(self, surface);
+	guchar *data = qahira_format_surface_get_data(self, surface);
 	if (G_UNLIKELY(!data)) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_FAILURE,
 				Q_("jpeg: surface data is NULL"));
@@ -615,7 +615,7 @@ save(QahiraImage *self, cairo_surface_t *surface, GOutputStream *stream,
 	case CAIRO_CONTENT_ALPHA:
 		components = 1;
 		color_space = JCS_GRAYSCALE;
-		stride = qahira_image_surface_get_stride(self, surface);
+		stride = qahira_format_surface_get_stride(self, surface);
 		if (0 > stride) {
 			g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_FAILURE,
 					Q_("jpeg: invalid stride"));
@@ -682,42 +682,42 @@ error:
 }
 
 static void
-qahira_image_jpeg_class_init(QahiraImageJpegClass *klass)
+qahira_format_jpeg_class_init(QahiraFormatJpegClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS(klass);
 	object_class->dispose = dispose;
 	object_class->finalize = finalize;
-	QahiraImageClass *image_class = QAHIRA_IMAGE_CLASS(klass);
-	image_class->load = load;
-	image_class->save = save;
+	QahiraFormatClass *format_class = QAHIRA_FORMAT_CLASS(klass);
+	format_class->load = load;
+	format_class->save = save;
 	g_type_class_add_private(klass, sizeof(struct Private));
-	// QahiraImageJpeg::progressive
+	// QahiraFormatJpeg::progressive
 	signals[SIGNAL_PROGRESSIVE] =
 		g_signal_new(g_intern_static_string("progressive"),
 			G_OBJECT_CLASS_TYPE(klass), G_SIGNAL_RUN_FIRST,
-			G_STRUCT_OFFSET(QahiraImageJpegClass, progressive),
+			G_STRUCT_OFFSET(QahiraFormatJpegClass, progressive),
 			NULL, NULL, qahira_marshal_VOID__POINTER,
 			G_TYPE_NONE, 1, G_TYPE_POINTER);
 }
 
-QahiraImage *
-qahira_image_jpeg_new(void)
+QahiraFormat *
+qahira_format_jpeg_new(void)
 {
-	return g_object_new(QAHIRA_TYPE_IMAGE_JPEG,
+	return g_object_new(QAHIRA_TYPE_FORMAT_JPEG,
 			"mime-type", "image/jpeg",
 			NULL);
 }
 
 void
-qahira_image_jpeg_set_quality(QahiraImage *self, gint quality)
+qahira_format_jpeg_set_quality(QahiraFormat *self, gint quality)
 {
-	g_return_if_fail(QAHIRA_IS_IMAGE_JPEG(self));
+	g_return_if_fail(QAHIRA_IS_FORMAT_JPEG(self));
 	GET_PRIVATE(self)->quality = CLAMP(quality, 0, 100);
 }
 
 gint
-qahira_image_jpeg_get_quality(QahiraImage *self)
+qahira_format_jpeg_get_quality(QahiraFormat *self)
 {
-	g_return_val_if_fail(QAHIRA_IS_IMAGE_JPEG(self), 0);
+	g_return_val_if_fail(QAHIRA_IS_FORMAT_JPEG(self), 0);
 	return GET_PRIVATE(self)->quality;
 }

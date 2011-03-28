@@ -19,18 +19,18 @@
 #include "config.h"
 #endif
 #include "qahira/accumulator.h"
-#include "qahira/image/private.h"
+#include "qahira/format/private.h"
 #include "qahira/macros.h"
 #include "qahira/marshal.h"
 
-G_DEFINE_ABSTRACT_TYPE(QahiraImage, qahira_image, G_TYPE_OBJECT)
+G_DEFINE_ABSTRACT_TYPE(QahiraFormat, qahira_format, G_TYPE_OBJECT)
 
 #define ASSIGN_PRIVATE(instance) \
-	(G_TYPE_INSTANCE_GET_PRIVATE(instance, QAHIRA_TYPE_IMAGE, \
+	(G_TYPE_INSTANCE_GET_PRIVATE(instance, QAHIRA_TYPE_FORMAT, \
 		struct Private))
 
 #define GET_PRIVATE(instance) \
-	((struct Private *)((QahiraImage *)instance)->priv)
+	((struct Private *)((QahiraFormat *)instance)->priv)
 
 enum Signals {
 	SIGNAL_SURFACE_CREATE,
@@ -46,7 +46,7 @@ struct Private {
 };
 
 static void
-qahira_image_init(QahiraImage *self)
+qahira_format_init(QahiraFormat *self)
 {
 	self->priv = ASSIGN_PRIVATE(self);
 }
@@ -58,7 +58,7 @@ finalize(GObject *base)
 	if (priv->types) {
 		g_slist_free(priv->types);
 	}
-	G_OBJECT_CLASS(qahira_image_parent_class)->finalize(base);
+	G_OBJECT_CLASS(qahira_format_parent_class)->finalize(base);
 }
 
 enum Properties {
@@ -70,10 +70,10 @@ enum Properties {
 static void
 set_property(GObject *base, guint id, const GValue *value, GParamSpec *pspec)
 {
-	QahiraImage *self = (QahiraImage *)base;
+	QahiraFormat *self = (QahiraFormat *)base;
 	switch (id) {
 	case PROP_MIME_TYPE:
-		qahira_image_add_type(self, g_value_get_string(value));
+		qahira_format_add_type(self, g_value_get_string(value));
 		break;
 	default:
 		G_OBJECT_WARN_INVALID_PROPERTY_ID(base, id, pspec);
@@ -82,7 +82,7 @@ set_property(GObject *base, guint id, const GValue *value, GParamSpec *pspec)
 }
 
 static cairo_surface_t *
-load(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
+load(QahiraFormat *self, GInputStream *stream, GCancellable *cancel,
 		GError **error)
 {
 	g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_UNSUPPORTED,
@@ -91,7 +91,7 @@ load(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
 }
 
 static gboolean
-save(QahiraImage *self, cairo_surface_t *surface, GOutputStream *stream,
+save(QahiraFormat *self, cairo_surface_t *surface, GOutputStream *stream,
 		GCancellable *cancel, GError **error)
 {
 	g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_UNSUPPORTED,
@@ -100,14 +100,14 @@ save(QahiraImage *self, cairo_surface_t *surface, GOutputStream *stream,
 }
 
 static cairo_surface_t *
-surface_create(QahiraImage *self, cairo_format_t format,
+surface_create(QahiraFormat *self, cairo_format_t format,
 		gint width, gint height)
 {
 	return cairo_image_surface_create(format, width, height);
 }
 
 static guchar *
-surface_get_data(QahiraImage *self, cairo_surface_t *surface)
+surface_get_data(QahiraFormat *self, cairo_surface_t *surface)
 {
 	cairo_surface_type_t type = cairo_surface_get_type(surface);
 	if (CAIRO_SURFACE_TYPE_IMAGE != type) {
@@ -117,7 +117,7 @@ surface_get_data(QahiraImage *self, cairo_surface_t *surface)
 }
 
 static gint
-surface_get_stride(QahiraImage *self, cairo_surface_t *surface)
+surface_get_stride(QahiraFormat *self, cairo_surface_t *surface)
 {
 	cairo_surface_type_t type = cairo_surface_get_type(surface);
 	if (CAIRO_SURFACE_TYPE_IMAGE != type) {
@@ -127,7 +127,7 @@ surface_get_stride(QahiraImage *self, cairo_surface_t *surface)
 }
 
 static void
-qahira_image_class_init(QahiraImageClass *klass)
+qahira_format_class_init(QahiraFormatClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS(klass);
 	object_class->finalize = finalize;
@@ -138,74 +138,74 @@ qahira_image_class_init(QahiraImageClass *klass)
 	klass->surface_get_data = surface_get_data;
 	klass->surface_get_stride = surface_get_stride;
 	g_type_class_add_private(klass, sizeof(struct Private));
-	// QahiraImage::surface-create
+	// QahiraFormat::surface-create
 	signals[SIGNAL_SURFACE_CREATE] =
 		g_signal_new(g_intern_static_string("surface-create"),
 			G_OBJECT_CLASS_TYPE(klass), G_SIGNAL_RUN_LAST,
-			G_STRUCT_OFFSET(QahiraImageClass, surface_create),
+			G_STRUCT_OFFSET(QahiraFormatClass, surface_create),
 			qahira_pointer_accumulator, NULL,
 			qahira_marshal_POINTER__INT_INT_INT, G_TYPE_POINTER,
 			3, G_TYPE_INT, G_TYPE_INT, G_TYPE_INT);
-	// QahiraImage::surface-get-data
+	// QahiraFormat::surface-get-data
 	signals[SIGNAL_SURFACE_GET_DATA] =
 		g_signal_new(g_intern_static_string("surface-get-data"),
 			G_OBJECT_CLASS_TYPE(klass), G_SIGNAL_RUN_LAST,
-			G_STRUCT_OFFSET(QahiraImageClass, surface_get_data),
+			G_STRUCT_OFFSET(QahiraFormatClass, surface_get_data),
 			qahira_pointer_accumulator, NULL,
 			qahira_marshal_POINTER__POINTER, G_TYPE_POINTER,
 			1, G_TYPE_POINTER);
-	// QahiraImage::surface-get-stride
+	// QahiraFormat::surface-get-stride
 	signals[SIGNAL_SURFACE_GET_STRIDE] =
 		g_signal_new(g_intern_static_string("surface-get-stride"),
 			G_OBJECT_CLASS_TYPE(klass), G_SIGNAL_RUN_LAST,
-			G_STRUCT_OFFSET(QahiraImageClass, surface_get_stride),
+			G_STRUCT_OFFSET(QahiraFormatClass, surface_get_stride),
 			qahira_integer_accumulator, NULL,
 			qahira_marshal_INT__POINTER, G_TYPE_INT,
 			1, G_TYPE_POINTER);
 	// properties
 	g_object_class_install_property(object_class, PROP_MIME_TYPE,
 		g_param_spec_string("mime-type", Q_("MIME type"),
-			Q_("MIME type(s) of this image format"), NULL,
+			Q_("MIME type(s) of this format format"), NULL,
 			G_PARAM_WRITABLE));
 }
 
 cairo_surface_t *
-qahira_image_load(QahiraImage *self, GInputStream *stream,
+qahira_format_load(QahiraFormat *self, GInputStream *stream,
 		GCancellable *cancel, GError **error)
 {
-	qahira_return_error_if_fail(QAHIRA_IS_IMAGE(self), NULL, error);
+	qahira_return_error_if_fail(QAHIRA_IS_FORMAT(self), NULL, error);
 	qahira_return_error_if_fail(G_IS_INPUT_STREAM(stream), NULL, error);
-	return QAHIRA_IMAGE_GET_CLASS(self)->
+	return QAHIRA_FORMAT_GET_CLASS(self)->
 		load(self, stream, cancel, error);
 }
 
 gboolean
-qahira_image_save(QahiraImage *self, cairo_surface_t *surface,
+qahira_format_save(QahiraFormat *self, cairo_surface_t *surface,
 		GOutputStream *stream, GCancellable *cancel, GError **error)
 {
-	qahira_return_error_if_fail(QAHIRA_IS_IMAGE(self), FALSE, error);
+	qahira_return_error_if_fail(QAHIRA_IS_FORMAT(self), FALSE, error);
 	qahira_return_error_if_fail(surface, FALSE, error);
 	qahira_return_error_if_fail(G_IS_OUTPUT_STREAM(stream), FALSE, error);
-	return QAHIRA_IMAGE_GET_CLASS(self)->
+	return QAHIRA_FORMAT_GET_CLASS(self)->
 		save(self, surface, stream, cancel, error);
 }
 
 gboolean
-qahira_image_supports(QahiraImage *self, const gchar *type)
+qahira_format_supports(QahiraFormat *self, const gchar *type)
 {
-	g_return_val_if_fail(QAHIRA_IS_IMAGE(self), FALSE);
+	g_return_val_if_fail(QAHIRA_IS_FORMAT(self), FALSE);
 	g_return_val_if_fail(type, FALSE);
 	const gchar *string = g_intern_string(type);
 	if (G_UNLIKELY(!string)) {
 		return FALSE;
 	}
-	return qahira_image_supports_intern_string(self, string);
+	return qahira_format_supports_intern_string(self, string);
 }
 
 gboolean
-qahira_image_supports_intern_string(QahiraImage *self, const gchar *type)
+qahira_format_supports_intern_string(QahiraFormat *self, const gchar *type)
 {
-	g_return_val_if_fail(QAHIRA_IS_IMAGE(self), FALSE);
+	g_return_val_if_fail(QAHIRA_IS_FORMAT(self), FALSE);
 	g_return_val_if_fail(type, FALSE);
 	struct Private *priv = GET_PRIVATE(self);
 	for (GSList *node = priv->types; node; node = node->next) {
@@ -217,9 +217,9 @@ qahira_image_supports_intern_string(QahiraImage *self, const gchar *type)
 }
 
 void
-qahira_image_add_type(QahiraImage *self, const gchar *type)
+qahira_format_add_type(QahiraFormat *self, const gchar *type)
 {
-	g_return_if_fail(QAHIRA_IS_IMAGE(self));
+	g_return_if_fail(QAHIRA_IS_FORMAT(self));
 	g_return_if_fail(type);
 	struct Private *priv = GET_PRIVATE(self);
 	const gchar *string = g_intern_string(type);
@@ -230,9 +230,9 @@ qahira_image_add_type(QahiraImage *self, const gchar *type)
 }
 
 void
-qahira_image_add_static_type(QahiraImage *self, const gchar *type)
+qahira_format_add_static_type(QahiraFormat *self, const gchar *type)
 {
-	g_return_if_fail(QAHIRA_IS_IMAGE(self));
+	g_return_if_fail(QAHIRA_IS_FORMAT(self));
 	g_return_if_fail(type);
 	struct Private *priv = GET_PRIVATE(self);
 	const gchar *string = g_intern_static_string(type);
@@ -243,10 +243,10 @@ qahira_image_add_static_type(QahiraImage *self, const gchar *type)
 }
 
 cairo_surface_t *
-qahira_image_surface_create(QahiraImage *self, cairo_format_t format,
+qahira_format_surface_create(QahiraFormat *self, cairo_format_t format,
 		gint width, gint height)
 {
-	g_return_val_if_fail(QAHIRA_IS_IMAGE(self), NULL);
+	g_return_val_if_fail(QAHIRA_IS_FORMAT(self), NULL);
 	cairo_surface_t *surface;
 	g_signal_emit(self, signals[SIGNAL_SURFACE_CREATE], 0,
 			format, width, height, &surface);
@@ -254,9 +254,9 @@ qahira_image_surface_create(QahiraImage *self, cairo_format_t format,
 }
 
 guchar *
-qahira_image_surface_get_data(QahiraImage *self, cairo_surface_t *surface)
+qahira_format_surface_get_data(QahiraFormat *self, cairo_surface_t *surface)
 {
-	g_return_val_if_fail(QAHIRA_IS_IMAGE(self), NULL);
+	g_return_val_if_fail(QAHIRA_IS_FORMAT(self), NULL);
 	g_return_val_if_fail(surface, NULL);
 	guchar *data;
 	g_signal_emit(self, signals[SIGNAL_SURFACE_GET_DATA], 0,
@@ -265,9 +265,9 @@ qahira_image_surface_get_data(QahiraImage *self, cairo_surface_t *surface)
 }
 
 gint
-qahira_image_surface_get_stride(QahiraImage *self, cairo_surface_t *surface)
+qahira_format_surface_get_stride(QahiraFormat *self, cairo_surface_t *surface)
 {
-	g_return_val_if_fail(QAHIRA_IS_IMAGE(self), -1);
+	g_return_val_if_fail(QAHIRA_IS_FORMAT(self), -1);
 	g_return_val_if_fail(surface, -1);
 	gint stride;
 	g_signal_emit(self, signals[SIGNAL_SURFACE_GET_STRIDE], 0,
@@ -276,7 +276,8 @@ qahira_image_surface_get_stride(QahiraImage *self, cairo_surface_t *surface)
 }
 
 void
-qahira_image_surface_size(cairo_surface_t *surface, gint *width, gint *height)
+qahira_format_surface_size(cairo_surface_t *surface, gint *width,
+		gint *height)
 {
 	cairo_t *cr = cairo_create(surface);
 	gdouble clip_width, clip_height;

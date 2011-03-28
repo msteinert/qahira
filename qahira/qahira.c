@@ -20,15 +20,15 @@
 #endif
 #include "qahira/accumulator.h"
 #if QAHIRA_HAS_JPEG
-#include "qahira/image/jpeg.h"
+#include "qahira/format/jpeg.h"
 #endif // QAHIRA_HAS_JPEG
 #if QAHIRA_HAS_PNG
-#include "qahira/image/png.h"
+#include "qahira/format/png.h"
 #endif // QAHIRA_HAS_PNG
 #if QAHIRA_HAS_TARGA
-#include "qahira/image/targa.h"
+#include "qahira/format/targa.h"
 #endif // QAHIRA_HAS_TARGA
-#include "qahira/image/private.h"
+#include "qahira/format/private.h"
 #include "qahira/macros.h"
 #include "qahira/marshal.h"
 #include "qahira/qahira.h"
@@ -43,7 +43,7 @@ G_DEFINE_TYPE(Qahira, qahira, G_TYPE_OBJECT)
 	((struct Private *)((Qahira *)instance)->priv)
 
 enum Signals {
-	SIGNAL_GET_IMAGE,
+	SIGNAL_GET_FORMAT,
 	SIGNAL_LAST
 };
 
@@ -66,28 +66,28 @@ dispose(GObject *base)
 {
 	struct Private *priv = GET_PRIVATE(base);
 	for (GSList *node = priv->formats; node; node = node->next) {
-		QahiraImage *image = node->data;
-		g_object_unref(image);
+		QahiraFormat *format = node->data;
+		g_object_unref(format);
 	}
 	G_OBJECT_CLASS(qahira_parent_class)->dispose(base);
 }
 
-static QahiraImage *
-get_image(Qahira *self, const gchar *mime)
+static QahiraFormat *
+get_format(Qahira *self, const gchar *mime)
 {
 #if QAHIRA_HAS_JPEG
 	if (g_content_type_equals(mime, "image/jpeg")) {
-		return qahira_image_jpeg_new();
+		return qahira_format_jpeg_new();
 	}
 #endif // QAHIRA_HAS_JPEG
 #if QAHIRA_HAS_PNG
 	if (g_content_type_equals(mime, "image/png")) {
-		return qahira_image_png_new();
+		return qahira_format_png_new();
 	}
 #endif // QAHIRA_HAS_PNG
 #if QAHIRA_HAS_TARGA
 	if (g_content_type_equals(mime, "image/x-tga")) {
-		return qahira_image_targa_new();
+		return qahira_format_targa_new();
 	}
 #endif // QAHIRA_HAS_TARGA
 	return NULL;
@@ -98,13 +98,13 @@ qahira_class_init(QahiraClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS(klass);
 	object_class->dispose = dispose;
-	klass->get_image = get_image;
+	klass->get_format = get_format;
 	g_type_class_add_private(klass, sizeof(struct Private));
 	// JoyBubble::hide
-	signals[SIGNAL_GET_IMAGE] =
-		g_signal_new(g_intern_static_string("get-image"),
+	signals[SIGNAL_GET_FORMAT] =
+		g_signal_new(g_intern_static_string("get-format"),
 			G_OBJECT_CLASS_TYPE(klass), G_SIGNAL_RUN_LAST,
-			G_STRUCT_OFFSET(QahiraClass, get_image),
+			G_STRUCT_OFFSET(QahiraClass, get_format),
 			qahira_object_accumulator, NULL,
 			qahira_marshal_OBJECT__STRING, G_TYPE_OBJECT,
 			1, G_TYPE_STRING);
@@ -159,13 +159,13 @@ qahira_load(Qahira *self, const gchar *filename, GError **error)
 				Q_("failed to guess content type"));
 		goto exit;
 	}
-	QahiraImage *image = qahira_get_image(self, mime);
-	if (G_UNLIKELY(!image)) {
+	QahiraFormat *format = qahira_get_format(self, mime);
+	if (G_UNLIKELY(!format)) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_UNSUPPORTED,
 				Q_("unsupported mime type `%s'"), mime);
 		goto exit;
 	}
-	surface = qahira_image_load(image, stream, NULL, error);
+	surface = qahira_format_load(format, stream, NULL, error);
 exit:
 	g_free(buffer);
 	g_free(mime);
@@ -199,8 +199,8 @@ qahira_save(Qahira *self, cairo_surface_t *surface, const gchar *filename,
 				Q_("out of memory"));
 		goto exit;
 	}
-	QahiraImage *image = qahira_get_image(self, mime);
-	if (G_UNLIKELY(!image)) {
+	QahiraFormat *format = qahira_get_format(self, mime);
+	if (G_UNLIKELY(!format)) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_UNSUPPORTED,
 				Q_("unsupported mime type `%s'"), mime);
 		goto exit;
@@ -210,7 +210,7 @@ qahira_save(Qahira *self, cairo_surface_t *surface, const gchar *filename,
 	if (G_UNLIKELY(!stream)) {
 		goto exit;
 	}
-	status = qahira_image_save(image, surface, stream, NULL, error);
+	status = qahira_format_save(format, surface, stream, NULL, error);
 exit:
 	g_free(mime);
 	if (stream) {
@@ -222,8 +222,8 @@ exit:
 	return status;
 }
 
-QahiraImage *
-qahira_get_image(Qahira *self, const gchar *mime)
+QahiraFormat *
+qahira_get_format(Qahira *self, const gchar *mime)
 {
 	g_return_val_if_fail(QAHIRA_IS_QAHIRA(self), NULL);
 	g_return_val_if_fail(mime, NULL);
@@ -232,18 +232,18 @@ qahira_get_image(Qahira *self, const gchar *mime)
 	if (G_UNLIKELY(!string)) {
 		return NULL;
 	}
-	QahiraImage *image = NULL;
+	QahiraFormat *format = NULL;
 	for (GSList *node = priv->formats; node; node = node->next) {
-		image = node->data;
-		if (qahira_image_supports_intern_string(image, string)) {
-			return image;
+		format = node->data;
+		if (qahira_format_supports_intern_string(format, string)) {
+			return format;
 		}
 	}
-	g_signal_emit(self, signals[SIGNAL_GET_IMAGE], 0, mime, &image);
-	if (image) {
-		priv->formats = g_slist_prepend(priv->formats, image);
+	g_signal_emit(self, signals[SIGNAL_GET_FORMAT], 0, mime, &format);
+	if (format) {
+		priv->formats = g_slist_prepend(priv->formats, format);
 	}
-	return image;
+	return format;
 }
 
 #ifdef QAHIRA_TRACE

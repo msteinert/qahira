@@ -24,7 +24,7 @@ G_BEGIN_DECLS
 
 typedef struct Qahira_ Qahira;
 
-typedef struct QahiraImage_ QahiraImage;
+typedef struct QahiraFormat_ QahiraFormat;
 
 G_END_DECLS
 

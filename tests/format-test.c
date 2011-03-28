@@ -21,7 +21,7 @@
 #include <glib.h>
 #include "qahira/qahira.h"
 
-#define CLASS "/qahira/image"
+#define CLASS "/qahira/format"
 
 static void
 setup(GString **path, gconstpointer data)
@@ -56,17 +56,17 @@ open_input(const gchar *filename)
 }
 
 #if QAHIRA_HAS_JPEG
-#include "qahira/image/jpeg.h"
+#include "qahira/format/jpeg.h"
 static void
 test_jpeg(GString **path, gconstpointer data)
 {
-	QahiraImage *jpeg = qahira_image_jpeg_new();
+	QahiraFormat *jpeg = qahira_format_jpeg_new();
 	g_assert(jpeg);
 	g_string_append(*path, "sphinx.jpg");
 	GInputStream *stream = open_input((*path)->str);
 	GError *error = NULL;
 	cairo_surface_t *surface =
-		qahira_image_load(jpeg, stream, NULL, &error);
+		qahira_format_load(jpeg, stream, NULL, &error);
 	g_assert(surface);
 	cairo_status_t status = cairo_surface_status(surface);
 	g_assert_cmpint(status, ==, CAIRO_STATUS_SUCCESS);
@@ -77,17 +77,17 @@ test_jpeg(GString **path, gconstpointer data)
 #endif // QAHIRA_HAS_JPEG
 
 #if QAHIRA_HAS_PNG
-#include "qahira/image/png.h"
+#include "qahira/format/png.h"
 static void
 test_png(GString **path, gconstpointer data)
 {
-	QahiraImage *png = qahira_image_png_new();
+	QahiraFormat *png = qahira_format_png_new();
 	g_assert(png);
 	g_string_append(*path, "sphinx.png");
 	GInputStream *stream = open_input((*path)->str);
 	GError *error = NULL;
 	cairo_surface_t *surface =
-		qahira_image_load(png, stream, NULL, &error);
+		qahira_format_load(png, stream, NULL, &error);
 	g_assert(surface);
 	cairo_status_t status = cairo_surface_status(surface);
 	g_assert_cmpint(status, ==, CAIRO_STATUS_SUCCESS);
@@ -98,17 +98,17 @@ test_png(GString **path, gconstpointer data)
 #endif // QAHIRA_HAS_PNG
 
 #if QAHIRA_HAS_TARGA
-#include "qahira/image/targa.h"
+#include "qahira/format/targa.h"
 static void
 test_targa(GString **path, gconstpointer data)
 {
-	QahiraImage *targa = qahira_image_targa_new();
+	QahiraFormat *targa = qahira_format_targa_new();
 	g_assert(targa);
 	g_string_append(*path, "sphinx.tga");
 	GInputStream *stream = open_input((*path)->str);
 	GError *error = NULL;
 	cairo_surface_t *surface =
-		qahira_image_load(targa, stream, NULL, &error);
+		qahira_format_load(targa, stream, NULL, &error);
 	g_assert(surface);
 	cairo_status_t status = cairo_surface_status(surface);
 	g_assert_cmpint(status, ==, CAIRO_STATUS_SUCCESS);

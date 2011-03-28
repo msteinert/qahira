@@ -19,17 +19,17 @@
 #include "config.h"
 #endif
 #include "qahira/error.h"
-#include "qahira/image/serial.h"
-#include "qahira/image/private.h"
+#include "qahira/format/serial.h"
+#include "qahira/format/private.h"
 
-G_DEFINE_TYPE(QahiraImageSerial, qahira_image_serial, QAHIRA_TYPE_IMAGE)
+G_DEFINE_TYPE(QahiraFormatSerial, qahira_format_serial, QAHIRA_TYPE_FORMAT)
 
 #define ASSIGN_PRIVATE(instance) \
-	(G_TYPE_INSTANCE_GET_PRIVATE(instance, QAHIRA_TYPE_IMAGE_SERIAL, \
+	(G_TYPE_INSTANCE_GET_PRIVATE(instance, QAHIRA_TYPE_FORMAT_SERIAL, \
 		struct Private))
 
 #define GET_PRIVATE(instance) \
-	((struct Private *)((QahiraImageSerial *)instance)->priv)
+	((struct Private *)((QahiraFormatSerial *)instance)->priv)
 
 typedef struct SerialHeader_ {
 	cairo_content_t content;
@@ -43,7 +43,7 @@ struct Private {
 };
 
 static void
-qahira_image_serial_init(QahiraImageSerial *self)
+qahira_format_serial_init(QahiraFormatSerial *self)
 {
 	self->priv = ASSIGN_PRIVATE(self);
 }
@@ -52,11 +52,11 @@ static void
 finalize(GObject *base)
 {
 	//struct Private *priv = GET_PRIVATE(base);
-	G_OBJECT_CLASS(qahira_image_serial_parent_class)->finalize(base);
+	G_OBJECT_CLASS(qahira_format_serial_parent_class)->finalize(base);
 }
 
 static gboolean
-serial_read(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
+serial_read(QahiraFormat *self, GInputStream *stream, GCancellable *cancel,
 		guchar *buffer, gsize size, GError **error)
 {
 	while (size) {
@@ -68,7 +68,7 @@ serial_read(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
 		if (G_UNLIKELY(size && !bytes)) {
 			g_set_error(error, QAHIRA_ERROR,
 					QAHIRA_ERROR_CORRUPT_IMAGE,
-					Q_("serial: truncated image"));
+					Q_("serial: truncated format"));
 			return FALSE;
 		}
 		size -= bytes;
@@ -78,7 +78,7 @@ serial_read(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
 }
 
 static cairo_surface_t *
-load(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
+load(QahiraFormat *self, GInputStream *stream, GCancellable *cancel,
 		GError **error)
 {
 	struct Private *priv = GET_PRIVATE(self);
@@ -104,20 +104,20 @@ load(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
 				Q_("serial: unsupported content type"));
 		goto error;
 	}
-	surface = qahira_image_surface_create(self, format,
+	surface = qahira_format_surface_create(self, format,
 			priv->header.width, priv->header.height);
 	if (!surface) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_NO_MEMORY,
 				Q_("serial: out of memory"));
 		goto error;
 	}
-	guchar *data = qahira_image_surface_get_data(self, surface);
+	guchar *data = qahira_format_surface_get_data(self, surface);
 	if (!data) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_FAILURE,
 				Q_("serial: surface data is NULL"));
 		goto error;
 	}
-	gint stride = qahira_image_surface_get_stride(self, surface);
+	gint stride = qahira_format_surface_get_stride(self, surface);
 	if (stride != priv->header.stride) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_FAILURE,
 				Q_("serial: invalid stride"));
@@ -141,7 +141,7 @@ error:
 }
 
 static gboolean
-serial_write(QahiraImage *self, GOutputStream *stream, GCancellable *cancel,
+serial_write(QahiraFormat *self, GOutputStream *stream, GCancellable *cancel,
 		guchar *buffer, gsize size, GError **error)
 {
 	while (size) {
@@ -158,24 +158,24 @@ serial_write(QahiraImage *self, GOutputStream *stream, GCancellable *cancel,
 }
 
 static gboolean
-save(QahiraImage *self, cairo_surface_t *surface, GOutputStream *stream,
+save(QahiraFormat *self, cairo_surface_t *surface, GOutputStream *stream,
 		GCancellable *cancel, GError **error)
 {
 	struct Private *priv = GET_PRIVATE(self);
 	gboolean status = TRUE;
-	guchar *data = qahira_image_surface_get_data(self, surface);
+	guchar *data = qahira_format_surface_get_data(self, surface);
 	if (!data) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_FAILURE,
 				Q_("serial: surface data is NULL"));
 		goto error;
 	}
-	priv->header.stride = qahira_image_surface_get_stride(self, surface);
+	priv->header.stride = qahira_format_surface_get_stride(self, surface);
 	if (0 > priv->header.stride) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_FAILURE,
 				Q_("serial: invalid stride"));
 		goto error;
 	}
-	qahira_image_surface_size(surface, &priv->header.width,
+	qahira_format_surface_size(surface, &priv->header.width,
 			&priv->header.height);
 	priv->header.content = cairo_surface_get_content(surface);
 	status = serial_write(self, stream, cancel, (gpointer)&priv->header,
@@ -193,32 +193,32 @@ error:
 }
 
 static void
-qahira_image_serial_class_init(QahiraImageSerialClass *klass)
+qahira_format_serial_class_init(QahiraFormatSerialClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS(klass);
 	object_class->finalize = finalize;
-	QahiraImageClass *image_class = QAHIRA_IMAGE_CLASS(klass);
-	image_class->load = load;
-	image_class->save = save;
+	QahiraFormatClass *format_class = QAHIRA_FORMAT_CLASS(klass);
+	format_class->load = load;
+	format_class->save = save;
 	g_type_class_add_private(klass, sizeof(struct Private));
 }
 
-QahiraImage *
-qahira_image_serial_new(void)
+QahiraFormat *
+qahira_format_serial_new(void)
 {
-	return g_object_new(QAHIRA_TYPE_IMAGE_SERIAL,
+	return g_object_new(QAHIRA_TYPE_FORMAT_SERIAL,
 			"mime-type", "application/octet-stream",
 			NULL);
 }
 
 gsize
-qahira_image_serial_get_size(QahiraImage *self, cairo_surface_t *surface)
+qahira_format_serial_get_size(QahiraFormat *self, cairo_surface_t *surface)
 {
-	gint stride = qahira_image_surface_get_stride(self, surface);
+	gint stride = qahira_format_surface_get_stride(self, surface);
 	if (G_UNLIKELY(0 > stride)) {
 		return 0;
 	}
 	gint height;
-	qahira_image_surface_size(surface, NULL, &height);
+	qahira_format_surface_size(surface, NULL, &height);
 	return sizeof(GET_PRIVATE(self)->header) + stride * height;
 }

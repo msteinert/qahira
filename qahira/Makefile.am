@@ -12,13 +12,13 @@ libqahira_@qahira_series_major@_@qahira_series_minor@_la_SOURCES = \
 	accumulator.c \
 	accumulator.h \
 	error.c \
-	image.c \
-	image/private.h \
-	image-serial.c \
+	format.c \
+	format/private.h \
 	macros.h \
 	marshal.c \
 	marshal.h \
-	qahira.c
+	qahira.c \
+	serial.c
 BUILT_SOURCES = \
 	marshal.c \
 	marshal.h
@@ -39,17 +39,17 @@ libqahira_@qahira_series_major@_@qahira_series_minor@_la_LDFLAGS = \
 pkgincludedir = $(includedir)/qahira-$(qahira_series)/qahira
 pkginclude_HEADERS = \
 	error.h \
-	image.h \
+	format.h \
 	types.h \
 	qahira.h
 # Image Formats
-imageincludedir = $(pkgincludedir)/image
-imageinclude_HEADERS = \
-	image/serial.h
+formatincludedir = $(pkgincludedir)/format
+formatinclude_HEADERS = \
+	format/serial.h
 if QAHIRA_HAS_JPEG
 libqahira_@qahira_series_major@_@qahira_series_minor@_la_SOURCES += \
-	image-jpeg.c
-imageinclude_HEADERS += image/jpeg.h
+	jpeg.c
+formatinclude_HEADERS += format/jpeg.h
 endif
 if QAHIRA_HAS_PNG
 libqahira_@qahira_series_major@_@qahira_series_minor@_la_CFLAGS += \
@@ -57,13 +57,13 @@ libqahira_@qahira_series_major@_@qahira_series_minor@_la_CFLAGS += \
 libqahira_@qahira_series_major@_@qahira_series_minor@_la_LDFLAGS += \
 	$(PNG_LIBS)
 libqahira_@qahira_series_major@_@qahira_series_minor@_la_SOURCES += \
-	image-png.c
-imageinclude_HEADERS += image/png.h
+	png.c
+formatinclude_HEADERS += format/png.h
 endif
 if QAHIRA_HAS_TARGA
 libqahira_@qahira_series_major@_@qahira_series_minor@_la_SOURCES += \
-	image-targa.c
-imageinclude_HEADERS += image/targa.h
+	targa.c
+formatinclude_HEADERS += format/targa.h
 endif
 EXTRA_DIST = \
 	marshal.list

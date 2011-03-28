@@ -20,33 +20,33 @@
 #include "config.h"
 #endif
 #include "qahira/error.h"
-#include "qahira/image/targa.h"
-#include "qahira/image/private.h"
+#include "qahira/format/targa.h"
+#include "qahira/format/private.h"
 #include <string.h>
 
-G_DEFINE_TYPE(QahiraImageTarga, qahira_image_targa, QAHIRA_TYPE_IMAGE)
+G_DEFINE_TYPE(QahiraFormatTarga, qahira_format_targa, QAHIRA_TYPE_FORMAT)
 
 #define ASSIGN_PRIVATE(instance) \
-	(G_TYPE_INSTANCE_GET_PRIVATE(instance, QAHIRA_TYPE_IMAGE_TARGA, \
+	(G_TYPE_INSTANCE_GET_PRIVATE(instance, QAHIRA_TYPE_FORMAT_TARGA, \
 		struct Private))
 
 #define GET_PRIVATE(instance) \
-	((struct Private *)((QahiraImageTarga *)instance)->priv)
+	((struct Private *)((QahiraFormatTarga *)instance)->priv)
 
 #define TGA_HEADER_SIZE (18)
 
 typedef struct TargaHeader_ {
-	guchar id_len; // image id length
+	guchar id_len; // format id length
 	guchar map_t; // color map type
-	guchar img_t; // image type
+	guchar img_t; // format type
 	gshort map_first; // index of first map entry
 	gshort map_len; // number of entries in color map
 	guchar map_entry; // bit-depth of a cmap entry
 	gshort x; // x-coordinate
 	gshort y; // y-coordinate
-	gshort width; // width of image
-	gshort height; // height of image
-	guchar depth; // pixel-depth of image
+	gshort width; // width of format
+	gshort height; // height of format
+	guchar depth; // pixel-depth of format
 	guchar alpha; // alpha bits
 	guchar horz;// horizontal orientation
 	guchar vert; // vertical orientation
@@ -63,7 +63,7 @@ struct Private {
 };
 
 static void
-qahira_image_targa_init(QahiraImageTarga *self)
+qahira_format_targa_init(QahiraFormatTarga *self)
 {
 	self->priv = ASSIGN_PRIVATE(self);
 }
@@ -75,11 +75,11 @@ finalize(GObject *base)
 	g_free(priv->colormap);
 	g_free(priv->buffer);
 	g_free(priv->id);
-	G_OBJECT_CLASS(qahira_image_targa_parent_class)->finalize(base);
+	G_OBJECT_CLASS(qahira_format_targa_parent_class)->finalize(base);
 }
 
 static gboolean
-tga_read(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
+tga_read(QahiraFormat *self, GInputStream *stream, GCancellable *cancel,
 		guchar *buffer, gsize size, GError **error)
 {
 	struct Private *priv = GET_PRIVATE(self);
@@ -103,7 +103,7 @@ tga_read(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
 }
 
 static gboolean
-tga_read_rle(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
+tga_read_rle(QahiraFormat *self, GInputStream *stream, GCancellable *cancel,
 		guchar *buffer, gsize size, GError **error)
 {
 	struct Private *priv = GET_PRIVATE(self);
@@ -165,7 +165,7 @@ tga_read_rle(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
 }
 
 static gboolean
-tga_skip(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
+tga_skip(QahiraFormat *self, GInputStream *stream, GCancellable *cancel,
 		gsize size, GError **error)
 {
 	struct Private *priv = GET_PRIVATE(self);
@@ -194,7 +194,7 @@ tga_skip(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
 }
 
 static inline gboolean
-ensure_buffer(QahiraImage *self, gsize size, GError **error)
+ensure_buffer(QahiraFormat *self, gsize size, GError **error)
 {
 	struct Private *priv = GET_PRIVATE(self);
 	if (priv->size < size) {
@@ -213,7 +213,7 @@ ensure_buffer(QahiraImage *self, gsize size, GError **error)
 }
 
 static gboolean
-read_header(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
+read_header(QahiraFormat *self, GInputStream *stream, GCancellable *cancel,
 		GError **error)
 {
 	struct Private *priv = GET_PRIVATE(self);
@@ -267,7 +267,7 @@ read_header(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
 }
 
 static gboolean
-read_image_id(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
+read_format_id(QahiraFormat *self, GInputStream *stream, GCancellable *cancel,
 		GError **error)
 {
 	struct Private *priv = GET_PRIVATE(self);
@@ -288,7 +288,7 @@ read_image_id(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
 }
 
 static gboolean
-read_colormap(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
+read_colormap(QahiraFormat *self, GInputStream *stream, GCancellable *cancel,
 		GError **error)
 {
 	struct Private *priv = GET_PRIVATE(self);
@@ -311,7 +311,7 @@ read_colormap(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
 }
 
 static inline void
-convert_rgb(QahiraImage *self, const guchar *in, guchar *out)
+convert_rgb(QahiraFormat *self, const guchar *in, guchar *out)
 {
 	struct Private *priv = GET_PRIVATE(self);
 	gushort pixel;
@@ -361,7 +361,7 @@ convert_rgb(QahiraImage *self, const guchar *in, guchar *out)
 }
 
 static cairo_surface_t *
-read_scanlines(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
+read_scanlines(QahiraFormat *self, GInputStream *stream, GCancellable *cancel,
 		GError **error)
 {
 	struct Private *priv = GET_PRIVATE(self);
@@ -389,14 +389,14 @@ read_scanlines(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
 	default:
 		g_assert_not_reached();
 	}
-	surface = qahira_image_surface_create(self, format,
+	surface = qahira_format_surface_create(self, format,
 			priv->header.width, priv->header.height);
 	if (G_UNLIKELY(!surface)) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_NO_MEMORY,
 				Q_("targa: out of memory"));
 		goto error;
 	}
-	guchar *data = qahira_image_surface_get_data(self, surface);
+	guchar *data = qahira_format_surface_get_data(self, surface);
 	if (G_UNLIKELY(!data)) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_FAILURE,
 				Q_("targa: surface data is NULL"));
@@ -406,7 +406,7 @@ read_scanlines(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
 	if (G_UNLIKELY(!ensure_buffer(self, stride, error))) {
 		goto error;
 	}
-	gint cairo_stride = qahira_image_surface_get_stride(self, surface);
+	gint cairo_stride = qahira_format_surface_get_stride(self, surface);
 	if (G_UNLIKELY(0 > cairo_stride)) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_FAILURE,
 				Q_("targa: invalid stride"));
@@ -449,7 +449,7 @@ error:
 }
 
 static cairo_surface_t *
-load(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
+load(QahiraFormat *self, GInputStream *stream, GCancellable *cancel,
 		GError **error)
 {
 	struct Private *priv = GET_PRIVATE(self);
@@ -460,7 +460,7 @@ load(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
 	g_free(priv->id);
 	priv->id = NULL;
 	if (priv->header.id_len) {
-		if (!read_image_id(self, stream, cancel, error)) {
+		if (!read_format_id(self, stream, cancel, error)) {
 			goto exit;
 		}
 	}
@@ -477,7 +477,7 @@ exit:
 }
 
 static gboolean
-tga_write(QahiraImage *self, GOutputStream *stream, GCancellable *cancel,
+tga_write(QahiraFormat *self, GOutputStream *stream, GCancellable *cancel,
 		guchar *buffer, gsize size, GError **error)
 {
 	struct Private *priv = GET_PRIVATE(self);
@@ -495,7 +495,7 @@ tga_write(QahiraImage *self, GOutputStream *stream, GCancellable *cancel,
 }
 
 static gboolean
-write_header(QahiraImage *self, GOutputStream *stream, GCancellable *cancel,
+write_header(QahiraFormat *self, GOutputStream *stream, GCancellable *cancel,
 		GError **error)
 {
 	struct Private *priv = GET_PRIVATE(self);
@@ -530,8 +530,8 @@ write_header(QahiraImage *self, GOutputStream *stream, GCancellable *cancel,
 }
 
 static gboolean
-write_image_id(QahiraImage *self, GOutputStream *stream, GCancellable *cancel,
-		GError **error)
+write_format_id(QahiraFormat *self, GOutputStream *stream,
+		GCancellable *cancel, GError **error)
 {
 	struct Private *priv = GET_PRIVATE(self);
 	if (G_UNLIKELY(TGA_HEADER_SIZE != priv->position)) {
@@ -541,7 +541,7 @@ write_image_id(QahiraImage *self, GOutputStream *stream, GCancellable *cancel,
 	}
 	if (G_UNLIKELY(!priv->id)) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_FAILURE,
-				Q_("targa: image ID is NULL"));
+				Q_("targa: format ID is NULL"));
 		return FALSE;
 	}
 	return tga_write(self, stream, cancel, priv->id, priv->header.id_len,
@@ -549,7 +549,7 @@ write_image_id(QahiraImage *self, GOutputStream *stream, GCancellable *cancel,
 }
 
 static gboolean
-write_colormap(QahiraImage *self, GOutputStream *stream, GCancellable *cancel,
+write_colormap(QahiraFormat *self, GOutputStream *stream, GCancellable *cancel,
 		GError **error)
 {
 	struct Private *priv = GET_PRIVATE(self);
@@ -570,7 +570,7 @@ write_colormap(QahiraImage *self, GOutputStream *stream, GCancellable *cancel,
 }
 
 static gboolean
-write_scanlines(QahiraImage *self, GOutputStream *stream,
+write_scanlines(QahiraFormat *self, GOutputStream *stream,
 		cairo_surface_t *surface, GCancellable *cancel,
 		GError **error)
 {
@@ -582,13 +582,13 @@ write_scanlines(QahiraImage *self, GOutputStream *stream,
 				Q_("targa: seek error"));
 		return FALSE;
 	}
-	guchar *data = qahira_image_surface_get_data(self, surface);
+	guchar *data = qahira_format_surface_get_data(self, surface);
 	if (G_UNLIKELY(!data)) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_FAILURE,
 				Q_("targa: surface data is NULL"));
 		return FALSE;
 	}
-	gint stride = qahira_image_surface_get_stride(self, surface);
+	gint stride = qahira_format_surface_get_stride(self, surface);
 	if (G_UNLIKELY(0 > stride)) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_FAILURE,
 				Q_("targa: invalid stride"));
@@ -631,13 +631,13 @@ write_scanlines(QahiraImage *self, GOutputStream *stream,
 }
 
 static gboolean
-save(QahiraImage *self, cairo_surface_t *surface, GOutputStream *stream,
+save(QahiraFormat *self, cairo_surface_t *surface, GOutputStream *stream,
 		GCancellable *cancel, GError **error)
 {
 	struct Private *priv = GET_PRIVATE(self);
 	gboolean status = TRUE;
 	gint width, height;
-	qahira_image_surface_size(surface, &width, &height);
+	qahira_format_surface_size(surface, &width, &height);
 	if (G_UNLIKELY(!width || !height)) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_FAILURE,
 				Q_("targa: invalid dimensions [%d x %d]"),
@@ -671,7 +671,7 @@ save(QahiraImage *self, cairo_surface_t *surface, GOutputStream *stream,
 		goto error;
 	}
 	if (priv->header.id_len) {
-		if (!write_image_id(self, stream, cancel, error)) {
+		if (!write_format_id(self, stream, cancel, error)) {
 			goto error;
 		}
 	}
@@ -689,20 +689,20 @@ error:
 }
 
 static void
-qahira_image_targa_class_init(QahiraImageTargaClass *klass)
+qahira_format_targa_class_init(QahiraFormatTargaClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS(klass);
 	object_class->finalize = finalize;
-	QahiraImageClass *image_class = QAHIRA_IMAGE_CLASS(klass);
-	image_class->load = load;
-	image_class->save = save;
+	QahiraFormatClass *format_class = QAHIRA_FORMAT_CLASS(klass);
+	format_class->load = load;
+	format_class->save = save;
 	g_type_class_add_private(klass, sizeof(struct Private));
 }
 
-QahiraImage *
-qahira_image_targa_new(void)
+QahiraFormat *
+qahira_format_targa_new(void)
 {
-	return g_object_new(QAHIRA_TYPE_IMAGE_TARGA,
+	return g_object_new(QAHIRA_TYPE_FORMAT_TARGA,
 			"mime-type", "image/x-targa",
 			"mime-type", "image/x-tga",
 			NULL);

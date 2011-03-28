@@ -22,7 +22,7 @@
 #include <gio/gio.h>
 #include <glib-object.h>
 #include <qahira/error.h>
-#include <qahira/image.h>
+#include <qahira/format.h>
 #include <qahira/types.h>
 #include <stdio.h>
 
@@ -55,13 +55,13 @@ struct Qahira_ {
 	gpointer priv;
 };
 
-typedef QahiraImage *
-(*QahiraGetImage)(Qahira *self, const gchar *mime);
+typedef QahiraFormat *
+(*QahiraGetFormat)(Qahira *self, const gchar *mime);
 
 struct QahiraClass_ {
 	/*< private >*/
 	GObjectClass parent_class;
-	QahiraGetImage get_image;
+	QahiraGetFormat get_format;
 };
 
 G_GNUC_NO_INSTRUMENT
@@ -80,8 +80,8 @@ gboolean
 qahira_save(Qahira *self, cairo_surface_t *surface, const gchar *filename,
 		GError **error);
 
-QahiraImage *
-qahira_get_image(Qahira *self, const gchar *mime);
+QahiraFormat *
+qahira_get_format(Qahira *self, const gchar *mime);
 
 G_END_DECLS
 

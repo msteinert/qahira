@@ -21,17 +21,17 @@
 #endif
 #include <png.h>
 #include "qahira/error.h"
-#include "qahira/image/png.h"
-#include "qahira/image/private.h"
+#include "qahira/format/png.h"
+#include "qahira/format/private.h"
 
-G_DEFINE_TYPE(QahiraImagePng, qahira_image_png, QAHIRA_TYPE_IMAGE)
+G_DEFINE_TYPE(QahiraFormatPng, qahira_format_png, QAHIRA_TYPE_FORMAT)
 
 #define ASSIGN_PRIVATE(instance) \
-	(G_TYPE_INSTANCE_GET_PRIVATE(instance, QAHIRA_TYPE_IMAGE_PNG, \
+	(G_TYPE_INSTANCE_GET_PRIVATE(instance, QAHIRA_TYPE_FORMAT_PNG, \
 		struct Private))
 
 #define GET_PRIVATE(instance) \
-	((struct Private *)((QahiraImagePng *)instance)->priv)
+	((struct Private *)((QahiraFormatPng *)instance)->priv)
 
 struct Private {
 	GInputStream *input;
@@ -43,7 +43,7 @@ struct Private {
 };
 
 static void
-qahira_image_png_init(QahiraImagePng *self)
+qahira_format_png_init(QahiraFormatPng *self)
 {
 	self->priv = ASSIGN_PRIVATE(self);
 	struct Private *priv = GET_PRIVATE(self);
@@ -154,7 +154,7 @@ bytes_to_data_transform_fn(png_structp png, png_row_infop row, png_bytep data)
 }
 
 static cairo_surface_t *
-load(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
+load(QahiraFormat *self, GInputStream *stream, GCancellable *cancel,
 		GError **error)
 {
 	struct Private *priv = GET_PRIVATE(self);
@@ -225,7 +225,7 @@ load(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
 	png_get_IHDR(png, info, &width, &height, &depth, &color, &interlace,
 			NULL, NULL);
 	if (G_UNLIKELY(8 != depth)) {
-		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_CORRUPT_IMAGE,
+		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_UNSUPPORTED,
 				Q_("png: unsupported bit depth"));
 		goto error;
 	}
@@ -241,11 +241,11 @@ load(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
 				bytes_to_data_transform_fn);
 		break;
 	default:
-		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_CORRUPT_IMAGE,
+		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_UNSUPPORTED,
 				Q_("png: unsupported color format"));
 		goto error;
 	}
-	surface = qahira_image_surface_create(self, format, width, height);
+	surface = qahira_format_surface_create(self, format, width, height);
 	if (G_UNLIKELY(!surface)) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_NO_MEMORY,
 				Q_("png: out of memory"));
@@ -257,13 +257,13 @@ load(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
 				"png: %s", cairo_status_to_string(status));
 		goto error;
 	}
-	guchar *data = qahira_image_surface_get_data(self, surface);
+	guchar *data = qahira_format_surface_get_data(self, surface);
 	if (G_UNLIKELY(!data)) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_FAILURE,
 				Q_("png: surface data is NULL"));
 		goto error;
 	}
-	gint stride = qahira_image_surface_get_stride(self, surface);
+	gint stride = qahira_format_surface_get_stride(self, surface);
 	if (G_UNLIKELY(0 > stride)) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_FAILURE,
 				Q_("png: invalid stride"));
@@ -363,7 +363,7 @@ unpremultiply_transform_fn(png_structp png, png_row_infop row, png_bytep data)
 }
 
 static gboolean
-save(QahiraImage *self, cairo_surface_t *surface, GOutputStream *stream,
+save(QahiraFormat *self, cairo_surface_t *surface, GOutputStream *stream,
 		GCancellable *cancel, GError **error)
 {
 	struct Private *priv = GET_PRIVATE(self);
@@ -373,7 +373,7 @@ save(QahiraImage *self, cairo_surface_t *surface, GOutputStream *stream,
 	png_infop info = NULL;
 	png_byte **rows = NULL;
 	gint width, height;
-	qahira_image_surface_size(surface, &width, &height);
+	qahira_format_surface_size(surface, &width, &height);
 	if (!width || !height) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_FAILURE,
 				Q_("png: invalid dimensions [%d x %d]"),
@@ -409,13 +409,13 @@ save(QahiraImage *self, cairo_surface_t *surface, GOutputStream *stream,
 		goto error;
 	}
 #endif // PNG_SETJMP_SUPPORTED
-	guchar *data = qahira_image_surface_get_data(self, surface);
+	guchar *data = qahira_format_surface_get_data(self, surface);
 	if (G_UNLIKELY(!data)) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_FAILURE,
 				Q_("png: surface data is NULL"));
 		goto error;
 	}
-	gint stride = qahira_image_surface_get_stride(self, surface);
+	gint stride = qahira_format_surface_get_stride(self, surface);
 	if (G_UNLIKELY(0 > stride)) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_FAILURE,
 				Q_("png: invalid stride"));
@@ -493,46 +493,46 @@ error:
 }
 
 static void
-qahira_image_png_class_init(QahiraImagePngClass *klass)
+qahira_format_png_class_init(QahiraFormatPngClass *klass)
 {
-	QahiraImageClass *image_class = QAHIRA_IMAGE_CLASS(klass);
-	image_class->load = load;
-	image_class->save = save;
+	QahiraFormatClass *format_class = QAHIRA_FORMAT_CLASS(klass);
+	format_class->load = load;
+	format_class->save = save;
 	g_type_class_add_private(klass, sizeof(struct Private));
 }
 
-QahiraImage *
-qahira_image_png_new(void)
+QahiraFormat *
+qahira_format_png_new(void)
 {
-	return g_object_new(QAHIRA_TYPE_IMAGE_PNG,
+	return g_object_new(QAHIRA_TYPE_FORMAT_PNG,
 			"mime-type", "image/png",
 			NULL);
 }
 
 void
-qahira_image_png_set_compression(QahiraImage *self, gint compression)
+qahira_format_png_set_compression(QahiraFormat *self, gint compression)
 {
-	g_return_if_fail(QAHIRA_IS_IMAGE_PNG(self));
+	g_return_if_fail(QAHIRA_IS_FORMAT_PNG(self));
 	GET_PRIVATE(self)->compression = CLAMP(compression, 0, 9);
 }
 
 gint
-qahira_image_png_get_compression(QahiraImage *self)
+qahira_format_png_get_compression(QahiraFormat *self)
 {
-	g_return_val_if_fail(QAHIRA_IS_IMAGE_PNG(self), 0);
+	g_return_val_if_fail(QAHIRA_IS_FORMAT_PNG(self), 0);
 	return GET_PRIVATE(self)->compression;
 }
 
 void
-qahira_image_set_interlace(QahiraImage *self, gboolean interlace)
+qahira_format_set_interlace(QahiraFormat *self, gboolean interlace)
 {
-	g_return_if_fail(QAHIRA_IS_IMAGE_PNG(self));
+	g_return_if_fail(QAHIRA_IS_FORMAT_PNG(self));
 	GET_PRIVATE(self)->interlace = interlace;
 }
 
 gboolean
-qahira_image_get_interlace(QahiraImage *self)
+qahira_format_get_interlace(QahiraFormat *self)
 {
-	g_return_val_if_fail(QAHIRA_IS_IMAGE_PNG(self), FALSE);
+	g_return_val_if_fail(QAHIRA_IS_FORMAT_PNG(self), FALSE);
 	return GET_PRIVATE(self)->interlace;
 }

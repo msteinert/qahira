@@ -16,14 +16,14 @@
  */
 
 /**
- * \brief Private/protected definitions for QahiraImage
+ * \brief Private/protected definitions for QahiraFormat
  * \author Michael Steinert <mike.steinert@gmail.com>
  */
 
-#ifndef QAHIRA_IMAGE_PRIVATE_H
-#define QAHIRA_IMAGE_PRIVATE_H
+#ifndef QAHIRA_FORMAT_PRIVATE_H
+#define QAHIRA_FORMAT_PRIVATE_H
 
-#include <qahira/image.h>
+#include <qahira/format.h>
 
 G_BEGIN_DECLS
 
@@ -41,34 +41,35 @@ G_BEGIN_DECLS
 
 G_GNUC_INTERNAL
 void
-qahira_image_add_type(QahiraImage *self, const gchar *type);
+qahira_format_add_type(QahiraFormat *self, const gchar *type);
 
 G_GNUC_INTERNAL
 void
-qahira_image_add_static_type(QahiraImage *self, const gchar *type);
+qahira_format_add_static_type(QahiraFormat *self, const gchar *type);
 
 G_GNUC_INTERNAL
 gboolean
-qahira_image_supports_intern_string(QahiraImage *self, const gchar *type);
+qahira_format_supports_intern_string(QahiraFormat *self, const gchar *type);
 
 G_GNUC_INTERNAL
 cairo_surface_t *
-qahira_image_surface_create(QahiraImage *self, cairo_format_t format,
+qahira_format_surface_create(QahiraFormat *self, cairo_format_t format,
 		gint width, gint height);
 
 G_GNUC_INTERNAL
 guchar *
-qahira_image_surface_get_data(QahiraImage *self, cairo_surface_t *surface);
+qahira_format_surface_get_data(QahiraFormat *self, cairo_surface_t *surface);
 
 G_GNUC_INTERNAL
 gint
-qahira_image_surface_get_stride(QahiraImage *self, cairo_surface_t *surface);
+qahira_format_surface_get_stride(QahiraFormat *self,
+		cairo_surface_t *surface);
 
 G_GNUC_INTERNAL
 void
-qahira_image_surface_size(cairo_surface_t *surface, gint *width,
+qahira_format_surface_size(cairo_surface_t *surface, gint *width,
 		gint *height);
 
 G_END_DECLS
 
-#endif // QAHIRA_IMAGE_PRIVATE_H
+#endif // QAHIRA_FORMAT_PRIVATE_H

@@ -12,11 +12,11 @@ LIBS = \
 	$(top_builddir)/qahira/libqahira-$(qahira_series).la
 # add unit tests
 check_PROGRAMS = \
-	image-test \
+	format-test \
 	qahira-test
 TESTS = $(check_PROGRAMS)
 # add source files
-image_test_SOURCES = image-test.c
+format_test_SOURCES = format-test.c
 qahira_test_SOURCES = qahira-test.c
 # generate XML report
 qahira.xml: $(check_PROGRAMS)

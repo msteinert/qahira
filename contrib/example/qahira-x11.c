@@ -20,7 +20,7 @@
 #endif
 #include <cairo-xlib.h>
 #include <glib.h>
-#include <qahira/image/serial.h>
+#include <qahira/format/serial.h>
 #include <qahira/qahira.h>
 #include <stdlib.h>
 #include <string.h>
@@ -41,11 +41,11 @@ surface_size(cairo_surface_t *surface, gint *width, gint *height)
 	cairo_destroy(cr);
 }
 
-static QahiraImage *
-on_get_image(Qahira *self, const gchar *mime, gpointer data)
+static QahiraFormat *
+on_get_format(Qahira *self, const gchar *mime, gpointer data)
 {
 	if (g_content_type_equals(mime, "application/octet-stream")) {
-		return qahira_image_serial_new();
+		return qahira_format_serial_new();
 	}
 	return NULL;
 }
@@ -70,7 +70,7 @@ main(int argc, char *argv[])
 	if (!qr) {
 		goto error;
 	}
-	g_signal_connect(qr, "get-image", G_CALLBACK(on_get_image), NULL);
+	g_signal_connect(qr, "get-format", G_CALLBACK(on_get_format), NULL);
 	image = qahira_load(qr, argv[1], &error);
 	if (!image) {
 		goto error;
