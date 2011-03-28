@@ -120,21 +120,16 @@ premultiply_transform_fn(png_structp png, png_row_infop row, png_bytep data)
 	for (gint i = 0; i < row->rowbytes; i += 4) {
 		guchar *base = &data[i];
 		guchar alpha = base[3];
-		guint pixel;
-		if (!alpha) {
-			pixel = 0;
-		} else {
-			guchar red = base[0];
-			guchar green = base[1];
-			guchar blue = base[2];
-			if (alpha != 0xff) {
-				red = multiply_alpha(alpha, red);
-				green = multiply_alpha(alpha, green);
-				blue = multiply_alpha(alpha, blue);
-			}
-			pixel = (alpha << 24) | (red << 16) | (green << 8)
-				| (blue << 0);
+		guchar red = base[0];
+		guchar green = base[1];
+		guchar blue = base[2];
+		if (alpha != 0xff) {
+			red = multiply_alpha(alpha, red);
+			green = multiply_alpha(alpha, green);
+			blue = multiply_alpha(alpha, blue);
 		}
+		guint pixel = (alpha << 24) | (red << 16) | (green << 8)
+			| (blue << 0);
 		memcpy(base, &pixel, sizeof(pixel));
 	}
 }
@@ -147,7 +142,7 @@ bytes_to_data_transform_fn(png_structp png, png_row_infop row, png_bytep data)
 		guchar red = base[0];
 		guchar green = base[1];
 		guchar blue = base[2];
-		guint pixel = (0xff << 24)  | (red << 16) | (green < 8)
+		guint pixel = (0xff << 24) | (red << 16) | (green << 8)
 			| (blue << 0);
 		memcpy(base, &pixel, sizeof(pixel));
 	}
@@ -213,8 +208,7 @@ load(QahiraFormat *self, GInputStream *stream, GCancellable *cancel,
 	}
 	if (16 == depth) {
 		png_set_strip_16(png);
-	}
-	if (8 > depth) {
+	} else if (8 > depth) {
 		png_set_packing(png);
 	}
 	if (PNG_INTERLACE_NONE != interlace) {
@@ -232,13 +226,14 @@ load(QahiraFormat *self, GInputStream *stream, GCancellable *cancel,
 	cairo_format_t format;
 	switch (color) {
 	case PNG_COLOR_TYPE_RGB:
-		format = CAIRO_FORMAT_ARGB32;
-		png_set_read_user_transform_fn(png, premultiply_transform_fn);
-		break;
-	case PNG_COLOR_TYPE_RGB_ALPHA:
 		format = CAIRO_FORMAT_RGB24;
 		png_set_read_user_transform_fn(png,
 				bytes_to_data_transform_fn);
+		//png_set_read_user_transform_fn(png, premultiply_transform_fn);
+		break;
+	case PNG_COLOR_TYPE_RGB_ALPHA:
+		format = CAIRO_FORMAT_ARGB32;
+		png_set_read_user_transform_fn(png, premultiply_transform_fn);
 		break;
 	default:
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_UNSUPPORTED,
