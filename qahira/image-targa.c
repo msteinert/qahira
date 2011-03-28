@@ -402,7 +402,6 @@ read_scanlines(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
 				Q_("targa: surface data is NULL"));
 		goto error;
 	}
-	cairo_surface_flush(surface);
 	gint stride = priv->header.width * priv->header.depth / 8;
 	if (G_UNLIKELY(!ensure_buffer(self, stride, error))) {
 		goto error;
@@ -413,6 +412,7 @@ read_scanlines(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
 				Q_("targa: invalid stride"));
 		goto error;
 	}
+	cairo_surface_flush(surface);
 	if (priv->header.img_t > 8 && priv->header.img_t < 12) {
 		for (gint i = 0; i < priv->header.height; ++i) {
 			status = tga_read_rle(self, stream, cancel, data,

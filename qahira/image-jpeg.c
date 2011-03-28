@@ -534,6 +534,7 @@ load(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
 	priv->decompress.buffered_image = priv->decompress.progressive_mode;
 	priv->decompress.do_fancy_upsampling = FALSE;
 	priv->decompress.do_block_smoothing = FALSE;
+	cairo_surface_flush(priv->surface);
 	if (priv->decompress.buffered_image) {
 		if (!load_progressive(self, error)) {
 			goto error;
@@ -544,6 +545,7 @@ load(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
 		}
 	}
 	jpeg_finish_decompress(&priv->decompress);
+	cairo_surface_mark_dirty(priv->surface);
 exit:
 	if (priv->input) {
 		g_object_unref(priv->input);

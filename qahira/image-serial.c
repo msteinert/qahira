@@ -123,11 +123,13 @@ load(QahiraImage *self, GInputStream *stream, GCancellable *cancel,
 				Q_("serial: invalid stride"));
 		goto error;
 	}
+	cairo_surface_flush(surface);
 	status = serial_read(self, stream, cancel, data,
 			priv->header.height * stride, error);
 	if (!status) {
 		goto error;
 	}
+	cairo_surface_mark_dirty(surface);
 exit:
 	return surface;
 error:
