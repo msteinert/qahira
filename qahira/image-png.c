@@ -379,7 +379,7 @@ save(QahiraImage *self, cairo_surface_t *surface, GOutputStream *stream,
 	qahira_image_surface_size(surface, &width, &height);
 	if (!width || !height) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_FAILURE,
-				Q_("png: invalid dimensions: [%d x %d]"),
+				Q_("png: invalid dimensions [%d x %d]"),
 				width, height);
 		goto error;
 	}

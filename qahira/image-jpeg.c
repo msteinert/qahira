@@ -241,11 +241,6 @@ term_destination(j_compress_ptr cinfo)
 		size -= bytes;
 		buffer += bytes;
 	}
-	gboolean status = g_output_stream_flush(priv->output, priv->cancel,
-			priv->error);
-	if (!status) {
-		siglongjmp(priv->env, 1);
-	}
 }
 
 static void
@@ -581,7 +576,7 @@ save(QahiraImage *self, cairo_surface_t *surface, GOutputStream *stream,
 	qahira_image_surface_size(surface, &width, &height);
 	if (!width || !height) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_FAILURE,
-				Q_("jpeg: invalid dimensions: [%d x %d]"),
+				Q_("jpeg: invalid dimensions [%d x %d]"),
 				width, height);
 		goto error;
 	}
