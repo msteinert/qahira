@@ -175,7 +175,7 @@ save(QahiraFormat *self, cairo_surface_t *surface, GOutputStream *stream,
 				Q_("serial: invalid stride"));
 		goto error;
 	}
-	qahira_format_surface_size(surface, &priv->header.width,
+	qahira_surface_size(surface, &priv->header.width,
 			&priv->header.height);
 	priv->header.content = cairo_surface_get_content(surface);
 	status = serial_write(self, stream, cancel, (gpointer)&priv->header,
@@ -219,6 +219,6 @@ qahira_format_serial_get_size(QahiraFormat *self, cairo_surface_t *surface)
 		return 0;
 	}
 	gint height;
-	qahira_format_surface_size(surface, NULL, &height);
+	qahira_surface_size(surface, NULL, &height);
 	return sizeof(GET_PRIVATE(self)->header) + stride * height;
 }

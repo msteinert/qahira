@@ -246,6 +246,19 @@ qahira_get_format(Qahira *self, const gchar *mime)
 	return format;
 }
 
+gint
+qahira_premultiply(gint alpha, gint color)
+{
+	gint tmp = alpha * color + 0x80;
+	return ((tmp >> 8) + tmp) >> 8;
+}
+
+gint
+qahira_unpremultiply(gint alpha, gint color)
+{
+	return ((color * 255) + (alpha >> 1)) / alpha;
+}
+
 #ifdef QAHIRA_TRACE
 #ifdef HAVE_BFD
 #include <bfd.h>

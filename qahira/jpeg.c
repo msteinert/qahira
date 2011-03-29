@@ -25,6 +25,7 @@
 #include "qahira/format/jpeg.h"
 #include "qahira/format/private.h"
 #include "qahira/marshal.h"
+#include "qahira/utility.h"
 #include <stdio.h>
 #include <string.h>
 #include <setjmp.h>
@@ -369,9 +370,9 @@ convert_rgb(QahiraFormat *self)
 		guchar *out = priv->data + priv->stride
 			* (i + priv->decompress.output_scanline - 1);
 		for (gint j = 0; j < priv->decompress.output_width; ++j) {
-			out[QAHIRA_R] = in[2];
+			out[QAHIRA_R] = in[0];
 			out[QAHIRA_G] = in[1];
-			out[QAHIRA_B] = in[0];
+			out[QAHIRA_B] = in[2];
 			in += 3;
 			out += 4;
 		}
@@ -395,13 +396,13 @@ convert_cmyk(QahiraFormat *self)
 			guchar y = in[2];
 			guchar k = in[3];
 			if (priv->decompress.saw_Adobe_marker) {
-				out[QAHIRA_R] = k * y / 255;
+				out[QAHIRA_R] = k * c / 255;
 				out[QAHIRA_G] = k * m / 255;
-				out[QAHIRA_B] = k * c / 255;
+				out[QAHIRA_B] = k * y / 255;
 			} else {
-				out[QAHIRA_R] = (255 - k) * (255 - y) / 255;
+				out[QAHIRA_R] = (255 - k) * (255 - c) / 255;
 				out[QAHIRA_G] = (255 - k) * (255 - m) / 255;
-				out[QAHIRA_B] = (255 - k) * (255 - c) / 255;
+				out[QAHIRA_B] = (255 - k) * (255 - y) / 255;
 			}
 			out += 4;
 			in += 4;
@@ -575,7 +576,7 @@ save(QahiraFormat *self, cairo_surface_t *surface, GOutputStream *stream,
 	gboolean status = TRUE;
 	guchar *buffer = NULL;
 	gint width, height;
-	qahira_format_surface_size(surface, &width, &height);
+	qahira_surface_size(surface, &width, &height);
 	if (!width || !height) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_FAILURE,
 				Q_("jpeg: invalid dimensions [%d x %d]"),
@@ -639,11 +640,23 @@ save(QahiraFormat *self, cairo_surface_t *surface, GOutputStream *stream,
 	while (priv->compress.next_scanline < priv->compress.image_height) {
 		switch (content) {
 		case CAIRO_CONTENT_COLOR:
+			for (gint j = 0; j < width; ++j) {
+				buffer[3 * j + 0] = data[QAHIRA_R];
+				buffer[3 * j + 1] = data[QAHIRA_G];
+				buffer[3 * j + 2] = data[QAHIRA_B];
+				data += 4;
+			}
 		case CAIRO_CONTENT_COLOR_ALPHA:
 			for (gint j = 0; j < width; ++j) {
-				buffer[3 * j + 2] = data[QAHIRA_R];
-				buffer[3 * j + 1] = data[QAHIRA_G];
-				buffer[3 * j + 0] = data[QAHIRA_B];
+				buffer[3 * j + 0] =
+					qahira_unpremultiply(data[QAHIRA_A],
+							data[QAHIRA_R]);
+				buffer[3 * j + 1] =
+					qahira_unpremultiply(data[QAHIRA_A],
+							data[QAHIRA_G]);
+				buffer[3 * j + 2] =
+					qahira_unpremultiply(data[QAHIRA_A],
+							data[QAHIRA_B]);
 				data += 4;
 			}
 			break;

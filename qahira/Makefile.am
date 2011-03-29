@@ -40,8 +40,9 @@ pkgincludedir = $(includedir)/qahira-$(qahira_series)/qahira
 pkginclude_HEADERS = \
 	error.h \
 	format.h \
+	qahira.h \
 	types.h \
-	qahira.h
+	utility.h
 # Image Formats
 formatincludedir = $(pkgincludedir)/format
 formatinclude_HEADERS = \

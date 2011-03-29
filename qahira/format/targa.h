@@ -43,13 +43,6 @@ G_BEGIN_DECLS
 	(G_TYPE_INSTANCE_GET_CLASS((instance), QAHIRA_TYPE_FORMAT_TARGA, \
 		QahiraFormatTargaClass))
 
-typedef enum {
-	QAHIRA_ORIENTATION_TOP,
-	QAHIRA_ORIENTATION_BOTTOM,
-	QAHIRA_ORIENTATION_LEFT,
-	QAHIRA_ORIENTATION_RIGHT
-} QahiraOrientation;
-
 typedef struct QahiraFormatTarga_ QahiraFormatTarga;
 
 typedef struct QahiraFormatTargaClass_ QahiraFormatTargaClass;

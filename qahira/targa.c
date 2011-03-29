@@ -22,6 +22,7 @@
 #include "qahira/error.h"
 #include "qahira/format/targa.h"
 #include "qahira/format/private.h"
+#include "qahira/utility.h"
 #include <string.h>
 
 G_DEFINE_TYPE(QahiraFormatTarga, qahira_format_targa, QAHIRA_TYPE_FORMAT)
@@ -48,8 +49,8 @@ typedef struct TargaHeader_ {
 	gshort height; // height of format
 	guchar depth; // pixel-depth of format
 	guchar alpha; // alpha bits
-	guchar horz;// horizontal orientation
-	guchar vert; // vertical orientation
+	gboolean horz;// flip horizontal
+	gboolean vert; // flip vertical
 } TargaHeader;
 
 struct Private {
@@ -149,8 +150,8 @@ tga_read_rle(QahiraFormat *self, GInputStream *stream, GCancellable *cancel,
 		if (0 < repeat) {
 			for (gint j = 0; j < bpp; ++j) {
 				priv->buffer[j] = pixel[j];
-				--repeat;
 			}
+			--repeat;
 		} else {
 			status = tga_read(self, stream, cancel, priv->buffer,
 					bpp, error);
@@ -238,12 +239,8 @@ read_header(QahiraFormat *self, GInputStream *stream, GCancellable *cancel,
 	priv->header.height = priv->buffer[14] + priv->buffer[15] * 256;
 	priv->header.depth = priv->buffer[16];
 	priv->header.alpha = priv->buffer[17] & 0x0f;
-	priv->header.horz = (priv->buffer[17] & 0x10)
-		? QAHIRA_ORIENTATION_TOP
-		: QAHIRA_ORIENTATION_BOTTOM;
-	priv->header.vert = (priv->buffer[17] & 0x20)
-		? QAHIRA_ORIENTATION_RIGHT
-		: QAHIRA_ORIENTATION_LEFT;
+	priv->header.horz = (priv->buffer[17] & 0x10) ? FALSE : TRUE;
+	priv->header.vert = (priv->buffer[17] & 0x20) ? FALSE : TRUE;
 	if (priv->header.map_t && priv->header.depth != 8) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_UNSUPPORTED,
 				Q_("targa: wrong bit depth for colormap: %d"),
@@ -311,46 +308,89 @@ read_colormap(QahiraFormat *self, GInputStream *stream, GCancellable *cancel,
 }
 
 static inline void
+convert_8(const guchar *in, guchar *out)
+{
+	out[QAHIRA_R] = in[0];
+	out[QAHIRA_G] = in[0];
+	out[QAHIRA_B] = in[0];
+}
+
+static inline void
+convert_15(const guchar *in, guchar *out, gboolean alpha)
+{
+	gshort pixel = (in[0] << 8) | in[1];
+	out[QAHIRA_R] = ((pixel >> 10) & 0x1f) / 0x1f * 255;
+	out[QAHIRA_G] = ((pixel >> 5) & 0x1f) / 0x1f * 255;
+	out[QAHIRA_B] = (pixel & 0x1f) / 0x1f * 255;
+	if (alpha) {
+		out[QAHIRA_A] = (pixel >> 15) & 0x1 ? 255 : 0;
+		if (0xff != out[QAHIRA_A]) {
+			out[QAHIRA_R] = qahira_premultiply(out[QAHIRA_A],
+					out[QAHIRA_R]);
+			out[QAHIRA_G] = qahira_premultiply(out[QAHIRA_A],
+					out[QAHIRA_G]);
+			out[QAHIRA_B] = qahira_premultiply(out[QAHIRA_A],
+					out[QAHIRA_B]);
+		}
+	}
+}
+
+static inline void
+convert_16(const guchar *in, guchar *out)
+{
+	gshort pixel = (in[0] << 8) | in[1];
+	out[QAHIRA_R] = ((pixel >> 11) & 0x1f) / 0x1f * 255;
+	out[QAHIRA_G] = ((pixel >> 5) & 0x3f) / 0x3f * 255;
+	out[QAHIRA_B] = (pixel & 0x1f) / 0x1f * 255;
+}
+
+static inline void
+convert_24(const guchar *in, guchar *out)
+{
+	out[QAHIRA_R] = in[2];
+	out[QAHIRA_G] = in[1];
+	out[QAHIRA_B] = in[0];
+}
+
+static inline void
+convert_32(const guchar *in, guchar *out)
+{
+	out[QAHIRA_A] = in[3];
+	if (0xff == out[QAHIRA_A]) {
+		out[QAHIRA_R] = in[2];
+		out[QAHIRA_G] = in[1];
+		out[QAHIRA_B] = in[0];
+	} else {
+		out[QAHIRA_R] = qahira_premultiply(in[3], in[2]);
+		out[QAHIRA_G] = qahira_premultiply(in[3], in[1]);
+		out[QAHIRA_B] = qahira_premultiply(in[3], in[0]);
+	}
+}
+
+static inline void
 convert_rgb(QahiraFormat *self, const guchar *in, guchar *out)
 {
 	struct Private *priv = GET_PRIVATE(self);
-	gushort pixel;
 	for (gint i = 0; i < priv->header.width; ++i) {
 		switch (priv->header.depth) {
 		case 8:
-			out[QAHIRA_R] = in[0];
-			out[QAHIRA_G] = in[0];
-			out[QAHIRA_B] = in[0];
+			convert_8(in, out);
 			in += 1;
 			break;
 		case 15:
-			pixel = (in[0] << 8) | in[1];
-			out[QAHIRA_R] = ((pixel >> 10) & 0x1f) / 0x1f * 255;
-			out[QAHIRA_G] = ((pixel >> 5) & 0x1f) / 0x1f * 255;
-			out[QAHIRA_B] = (pixel & 0x1f) / 0x1f * 255;
-			if (priv->header.alpha) {
-				out[QAHIRA_A] = (pixel >> 15) & 0x1 ? 255 : 0;
-			}
+			convert_15(in, out, priv->header.alpha);
 			in += 2;
 			break;
 		case 16:
-			pixel = (in[0] << 8) | in[1];
-			out[QAHIRA_R] = ((pixel >> 11) & 0x1f) / 0x1f * 255;
-			out[QAHIRA_G] = ((pixel >> 5) & 0x3f) / 0x3f * 255;
-			out[QAHIRA_B] = (pixel & 0x1f) / 0x1f * 255;
+			convert_16(in, out);
 			in += 2;
 			break;
 		case 24:
-			out[QAHIRA_R] = in[0];
-			out[QAHIRA_G] = in[1];
-			out[QAHIRA_B] = in[2];
+			convert_24(in, out);
 			in += 3;
 			break;
 		case 32:
-			out[QAHIRA_R] = in[0];
-			out[QAHIRA_G] = in[1];
-			out[QAHIRA_B] = in[2];
-			out[QAHIRA_A] = in[3];
+			convert_32(in, out);
 			in += 4;
 			break;
 		default:
@@ -637,7 +677,7 @@ save(QahiraFormat *self, cairo_surface_t *surface, GOutputStream *stream,
 	struct Private *priv = GET_PRIVATE(self);
 	gboolean status = TRUE;
 	gint width, height;
-	qahira_format_surface_size(surface, &width, &height);
+	qahira_surface_size(surface, &width, &height);
 	if (G_UNLIKELY(!width || !height)) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_FAILURE,
 				Q_("targa: invalid dimensions [%d x %d]"),

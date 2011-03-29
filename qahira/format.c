@@ -276,8 +276,7 @@ qahira_format_surface_get_stride(QahiraFormat *self, cairo_surface_t *surface)
 }
 
 void
-qahira_format_surface_size(cairo_surface_t *surface, gint *width,
-		gint *height)
+qahira_surface_size(cairo_surface_t *surface, gint *width, gint *height)
 {
 	cairo_t *cr = cairo_create(surface);
 	gdouble clip_width, clip_height;

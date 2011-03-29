@@ -23,6 +23,7 @@
 #include "qahira/error.h"
 #include "qahira/format/png.h"
 #include "qahira/format/private.h"
+#include "qahira/utility.h"
 
 G_DEFINE_TYPE(QahiraFormatPng, qahira_format_png, QAHIRA_TYPE_FORMAT)
 
@@ -107,44 +108,26 @@ read_data_fn(png_structp png, png_bytep buffer, png_size_t size)
 	}
 }
 
-static inline gint
-multiply_alpha(gint alpha, gint color)
-{
-	gint tmp = alpha * color + 0x80;
-	return ((tmp + (tmp >> 8)) >> 8);
-}
-
 static void
-premultiply_transform_fn(png_structp png, png_row_infop row, png_bytep data)
+load_transform_fn(png_structp png, png_row_infop row, png_bytep data)
 {
-	for (gint i = 0; i < row->rowbytes; i += 4) {
-		guchar *base = &data[i];
-		guchar alpha = base[3];
-		guchar red = base[0];
-		guchar green = base[1];
-		guchar blue = base[2];
-		if (alpha != 0xff) {
-			red = multiply_alpha(alpha, red);
-			green = multiply_alpha(alpha, green);
-			blue = multiply_alpha(alpha, blue);
+	for (gint i = 0; i < row->width; ++i) {
+		gint red, green, blue;
+		gint alpha = data[3];
+		if (alpha == 0xff) {
+			red = data[0];
+			green = data[1];
+			blue = data[2];
+		} else {
+			red = qahira_premultiply(alpha, data[0]);
+			green = qahira_premultiply(alpha, data[1]);
+			blue = qahira_premultiply(alpha, data[2]);
 		}
-		guint pixel = (alpha << 24) | (red << 16) | (green << 8)
-			| (blue << 0);
-		memcpy(base, &pixel, sizeof(pixel));
-	}
-}
-
-static void
-bytes_to_data_transform_fn(png_structp png, png_row_infop row, png_bytep data)
-{
-	for (gint i = 0; i < row->rowbytes; i += 4) {
-		guchar *base = &data[i];
-		guchar red = base[0];
-		guchar green = base[1];
-		guchar blue = base[2];
-		guint pixel = (0xff << 24) | (red << 16) | (green << 8)
-			| (blue << 0);
-		memcpy(base, &pixel, sizeof(pixel));
+		data[QAHIRA_A] = alpha;
+		data[QAHIRA_R] = red;
+		data[QAHIRA_G] = green;
+		data[QAHIRA_B] = blue;
+		data += 4;
 	}
 }
 
@@ -227,19 +210,16 @@ load(QahiraFormat *self, GInputStream *stream, GCancellable *cancel,
 	switch (color) {
 	case PNG_COLOR_TYPE_RGB:
 		format = CAIRO_FORMAT_RGB24;
-		png_set_read_user_transform_fn(png,
-				bytes_to_data_transform_fn);
-		//png_set_read_user_transform_fn(png, premultiply_transform_fn);
 		break;
 	case PNG_COLOR_TYPE_RGB_ALPHA:
 		format = CAIRO_FORMAT_ARGB32;
-		png_set_read_user_transform_fn(png, premultiply_transform_fn);
 		break;
 	default:
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_UNSUPPORTED,
 				Q_("png: unsupported color format"));
 		goto error;
 	}
+	png_set_read_user_transform_fn(png, load_transform_fn);
 	surface = qahira_format_surface_create(self, format, width, height);
 	if (G_UNLIKELY(!surface)) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_NO_MEMORY,
@@ -325,35 +305,25 @@ output_flush_fn(png_structp png)
 }
 
 static void
-data_to_bytes_transform_fn(png_structp png, png_row_infop row, png_bytep data)
+save_transform_fn(png_structp png, png_row_infop row, png_bytep data)
 {
-	for (gint i = 0; i < row->rowbytes; i += 4) {
-		guchar *out = &data[i];
-		guint pixel;
-		memcpy(&pixel, out, sizeof(pixel));
-		out[0] = (pixel & 0xff0000) >> 16;
-		out[1] = (pixel & 0x00ff00) >> 8;
-		out[2] = (pixel & 0x0000ff) >> 0;
-		out[3] = 0;
-	}
-}
-
-static void
-unpremultiply_transform_fn(png_structp png, png_row_infop row, png_bytep data)
-{
-	for (gint i = 0; i < row->rowbytes; i += 4) {
-		guchar *out = &data[i];
-		guint pixel;
-		guchar alpha;
-		memcpy (&pixel, out, sizeof(pixel));
-		alpha = (pixel & 0xff000000) >> 24;
-		out[0] = (((pixel & 0xff0000) >> 16)
-				* 255 + alpha / 2) / alpha;
-		out[1] = (((pixel & 0x00ff00) >>  8)
-				* 255 + alpha / 2) / alpha;
-		out[2] = (((pixel & 0x0000ff) >>  0)
-				* 255 + alpha / 2) / alpha;
-		out[3] = alpha;
+	for (gint i = 0; i < row->width; ++i) {
+		gint red, green, blue;
+		gint alpha = data[QAHIRA_A];
+		if (alpha == 0xff) {
+			red = data[QAHIRA_R];
+			green = data[QAHIRA_G];
+			blue = data[QAHIRA_B];
+		} else {
+			red = qahira_unpremultiply(alpha, data[QAHIRA_R]);
+			green = qahira_unpremultiply(alpha, data[QAHIRA_G]);
+			blue = qahira_unpremultiply(alpha, data[QAHIRA_B]);
+		}
+		data[0] = red;
+		data[1] = green;
+		data[2] = blue;
+		data[3] = alpha;
+		data += 4;
 	}
 }
 
@@ -368,7 +338,7 @@ save(QahiraFormat *self, cairo_surface_t *surface, GOutputStream *stream,
 	png_infop info = NULL;
 	png_byte **rows = NULL;
 	gint width, height;
-	qahira_format_surface_size(surface, &width, &height);
+	qahira_surface_size(surface, &width, &height);
 	if (!width || !height) {
 		g_set_error(error, QAHIRA_ERROR, QAHIRA_ERROR_FAILURE,
 				Q_("png: invalid dimensions [%d x %d]"),
@@ -453,19 +423,10 @@ save(QahiraFormat *self, cairo_surface_t *surface, GOutputStream *stream,
 			PNG_COMPRESSION_TYPE_DEFAULT,
 			PNG_FILTER_TYPE_DEFAULT);
 	png_write_info(png, info);
-	switch (color) {
-	case PNG_COLOR_TYPE_RGB:
+	if (PNG_COLOR_TYPE_RGB == color) {
 		png_set_filler(png, 0, PNG_FILLER_AFTER);
-		png_set_write_user_transform_fn(png,
-				data_to_bytes_transform_fn);
-		break;
-	case PNG_COLOR_TYPE_RGB_ALPHA:
-		png_set_write_user_transform_fn(png,
-				unpremultiply_transform_fn);
-		break;
-	default:
-		break;
 	}
+	png_set_write_user_transform_fn(png, save_transform_fn);
 	png_write_image(png, rows);
 	png_write_end(png, info);
 exit:
